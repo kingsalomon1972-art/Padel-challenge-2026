@@ -537,7 +537,7 @@ export default function App() {
         >
           {/* Cerchio Logo con effetto pulsazione e hover */}
           <div className="relative">
-            <div className="absolute inset-0 bg-lime-400 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 animate-pulse"></div>
+            {/* HO RIMOSSO IL DIV DEL BAGLIORE CHE ERA QUI */}
             
             {/* QUI HO CAMBIATO LE DIMENSIONI a w-72 h-72 */}
             <div className="relative w-72 h-72 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">

@@ -538,7 +538,9 @@ export default function App() {
           {/* Cerchio Logo con effetto pulsazione e hover */}
           <div className="relative">
             <div className="absolute inset-0 bg-lime-400 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 animate-pulse"></div>
-            <div className="relative w-48 h-48 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+            
+            {/* QUI HO CAMBIATO LE DIMENSIONI a w-72 h-72 */}
+            <div className="relative w-72 h-72 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
               <img 
                 src={logo} 
                 alt="Padel Logo" 
@@ -548,7 +550,7 @@ export default function App() {
           </div>
 
           {/* Testi */}
-          <div className="text-center space-y-2 mt-4">
+          <div className="text-center space-y-2 mt-8">
             <h1 className="text-5xl font-black italic tracking-tighter text-white">
               PADEL
             </h1>

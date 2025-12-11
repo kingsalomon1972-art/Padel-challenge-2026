@@ -551,7 +551,7 @@ export default function App() {
           </div>
 
           {/* Testi */}
-          <div className="text-center space-y-2 mt-8">
+          <div className="text-center space-y-2 mt-2">
             <h1 className="text-5xl font-black italic tracking-tighter text-white">
               PADEL
             </h1>

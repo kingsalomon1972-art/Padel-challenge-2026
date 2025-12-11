@@ -45,6 +45,9 @@ import {
   Pizza
 } from 'lucide-react';
 
+// --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
+import logo from './logo.png'; 
+
 // --- CONFIGURAZIONE FIREBASE ---
 let firebaseConfig;
 
@@ -276,7 +279,6 @@ const ProgressChart = ({ players, matches }) => {
             return `${x},${y}`;
           }).join(' ');
 
-          // Calcola coordinate ultimo punto per l'avatar
           const lastVal = points[points.length - 1];
           const lastX = padding + (points.length - 1) / numSteps * chartW;
           const lastY = (height - padding) - (lastVal / maxPoints) * chartH;
@@ -284,7 +286,6 @@ const ProgressChart = ({ players, matches }) => {
           return (
             <g key={p.id}>
               <polyline points={pointsString} fill="none" stroke={colors[i % colors.length]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md" />
-              {/* Avatar alla fine della linea */}
               <foreignObject x={lastX - 3} y={lastY - 3} width="8" height="8" className="overflow-visible">
                 <PlayerAvatar player={p} size="sm" className="w-full h-full border-[0.5px] border-slate-900 shadow-sm" style={{borderColor: colors[i % colors.length]}} />
               </foreignObject>
@@ -300,6 +301,7 @@ const ProgressChart = ({ players, matches }) => {
 // --- MAIN APP COMPONENT ---
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true); // <--- STATO SPLASH SCREEN
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChart, setShowChart] = useState(false);
@@ -523,20 +525,69 @@ export default function App() {
     return dates;
   }, []);
 
+  // --- RENDER START ---
+
+  // 1. SPLASH SCREEN (Con il tuo Logo)
+  if (showSplash) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
+        <div 
+          onClick={() => setShowSplash(false)}
+          className="cursor-pointer flex flex-col items-center gap-6 group select-none"
+        >
+          {/* Cerchio Logo con effetto pulsazione e hover */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-lime-400 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 animate-pulse"></div>
+            <div className="relative w-48 h-48 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+              <img 
+                src={logo} 
+                alt="Padel Logo" 
+                className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(163,230,53,0.5)]" 
+              />
+            </div>
+          </div>
+
+          {/* Testi */}
+          <div className="text-center space-y-2 mt-4">
+            <h1 className="text-5xl font-black italic tracking-tighter text-white">
+              PADEL
+            </h1>
+            <div className="text-4xl font-black text-lime-400 tracking-widest">
+              CHALLENGE
+            </div>
+            <div className="text-xl font-bold text-slate-500 tracking-[0.5em] mt-2">
+              2026
+            </div>
+          </div>
+
+          {/* Hint per cliccare */}
+          <div className="absolute bottom-12 text-slate-500 text-xs uppercase tracking-widest animate-bounce">
+            Tocca per entrare
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. ERRORI CONFIGURAZIONE
   if (!isConfigured) return <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center"><div className="w-20 h-20 bg-yellow-400/20 rounded-full flex items-center justify-center text-yellow-400 mb-6 animate-pulse"><Database size={40} /></div><h1 className="text-3xl font-black mb-2">Database Non Collegato</h1><p className="text-slate-400 mb-8 max-w-md">Inserisci le chiavi Firebase nel codice.</p></div>;
+  
+  // 3. CARICAMENTO
   if (!user) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Caricamento...</div>;
 
+  // 4. SELEZIONE PROFILO (LOGIN)
   if (!currentPlayer && !isEditingProfile) {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center">
         <div className="w-full max-w-md space-y-8 text-center">
-          <div><div className="mx-auto bg-lime-400 w-20 h-20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(163,230,53,0.5)]"><Activity size={40} className="text-slate-900" /></div><h1 className="text-4xl font-black italic tracking-tighter">PADEL CHALLENGE <span className="text-lime-400">2026</span></h1></div>
+          <div><div className="mx-auto w-24 h-24 mb-4 drop-shadow-xl"><img src={logo} alt="Logo" className="w-full h-full object-contain" /></div><h1 className="text-4xl font-black italic tracking-tighter">PADEL CHALLENGE <span className="text-lime-400">2026</span></h1></div>
           <Card><h2 className="text-xl font-bold mb-4">Chi sei?</h2><div className="grid grid-cols-1 gap-3">{players.map(p => (<button key={p.id} onClick={() => { setCurrentPlayer(p); localStorage.setItem('padel_player_id', p.id); }} className="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl flex items-center gap-3 transition-all text-left"><PlayerAvatar player={p} size="sm" /><span className="font-bold">{p.name}</span></button>))} <button onClick={() => setIsEditingProfile(true)} className="mt-2 text-lime-400 text-sm font-bold hover:underline">+ Crea nuovo giocatore</button></div></Card>
         </div>
       </div>
     );
   }
 
+  // 5. CREAZIONE NUOVO PROFILO
   if (isEditingProfile) {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center">
@@ -553,6 +604,7 @@ export default function App() {
   const completedMatchesCount = matches.filter(m => m.score).length;
   const scheduledMatchesCount = matches.filter(m => !m.score).length;
 
+  // 6. MAIN DASHBOARD
   return (
     <div className="min-h-screen bg-slate-950 text-white pb-24 font-sans selection:bg-lime-400 selection:text-black relative">
       
@@ -596,7 +648,7 @@ export default function App() {
       )}
 
       <header className="fixed top-0 left-0 right-0 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 z-50 px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2"><Activity className="text-lime-400" size={24} /><span className="font-black italic text-xl tracking-tight">PADEL CHALLENGE <span className="text-lime-400">2026</span></span></div>
+        <div className="flex items-center gap-2"><div className="w-6 h-6"><img src={logo} alt="Mini Logo" className="w-full h-full object-contain" /></div><span className="font-black italic text-xl tracking-tight">PADEL CHALLENGE <span className="text-lime-400">2026</span></span></div>
         <div className="flex items-center gap-2"><div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full border border-slate-700"><PlayerAvatar player={currentPlayer} size="sm" /><span className="text-xs font-bold text-slate-300 pr-1">{currentPlayer?.name || 'Utente'}</span></div><button onClick={() => { localStorage.removeItem('padel_player_id'); setCurrentPlayer(null); }} className="text-slate-500 hover:text-white"><XCircle size={20} /></button></div>
       </header>
 
@@ -627,7 +679,7 @@ export default function App() {
           </>
         )}
 
-        {/* TOURNAMENT VIEW - CORRETTA */}
+        {/* TOURNAMENT VIEW */}
         {activeTab === 'tournament' && !isAddingMatch && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -687,7 +739,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW: RANKING & OTHERS (KEEP EXISTING) */}
+        {/* VIEW: RANKING & OTHERS */}
         {activeTab === 'ranking' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center"><h2 className="text-2xl font-bold flex items-center gap-2"><Trophy className="text-yellow-400" /> Classifica</h2><button onClick={() => setShowChart(!showChart)} className="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700 transition-all">{showChart ? <LayoutDashboard size={20}/> : <LineChart size={20}/>}</button></div>
@@ -695,44 +747,11 @@ export default function App() {
           </div>
         )}
 
-        {/* RULES, CALENDAR, PLAYERS (KEEP EXISTING) */}
+        {/* RULES, CALENDAR, PLAYERS */}
         {activeTab === 'rules' && (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="text-lime-400" /> Regolamento</h2>
             <div className="space-y-4">
             <Card className="border-l-4 border-l-lime-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Netta (2-0)</h3><div className="bg-lime-400/20 text-lime-400 px-2 py-1 rounded text-xs font-bold">Best Scenar</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-lime-400"/><span><strong>8 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Minus size={14} className="text-slate-500"/><span><strong>0.2 Punti</strong> per ogni game vinto ai perdenti.</span></li></ul></Card>
             <Card className="border-l-4 border-l-yellow-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Combattuta (2-1)</h3><div className="bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded text-xs font-bold">Battle</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-yellow-400"/><span><strong>6 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Check size={14} className="text-slate-400"/><span><strong>3 Punti</strong> a testa per i perdenti.</span></li></ul></Card>
-            <Card className="border-l-4 border-l-slate-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Pareggio (1-1)</h3><div className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-bold">Draw</div></div><p className="text-sm text-slate-400 mb-2">Se la partita finisce un set pari, viene considerata pareggio.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Calculator size={14} className="text-blue-400"/><span><strong>0.3 Punti</strong> per ogni game vinto a tutti i giocatori.</span></li></ul></Card>
-            
-            {/* NUOVA REGOLA PIZZA */}
-            <Card className="border-l-4 border-l-red-400 bg-slate-900/80">
-                <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold text-white text-lg">Regola Aurea</h3>
-                <div className="bg-red-400/20 text-red-400 px-2 py-1 rounded text-xs font-bold">Importante</div>
-                </div>
-                <ul className="space-y-2 text-sm text-slate-300">
-                <li className="flex items-center gap-2">
-                    <Pizza size={14} className="text-red-400"/>
-                    <span><strong>Chi perde paga la pizza.</strong> Chi vince gode e mangia.</span>
-                </li>
-                </ul>
-            </Card>
-            </div>
-        </div>
-        )}
-
-        {activeTab === 'calendar' && (<div className="space-y-4"><h2 className="text-2xl font-bold flex items-center gap-2"><Calendar className="text-lime-400" /> Disponibilità</h2><div className="grid grid-cols-1 gap-3">{calendarDates.map(date => { const dayAvail = availabilities.filter(a => a.date === date); const amIAvailable = dayAvail.some(a => a.playerId === currentPlayer.id); const isMatch = dayAvail.length >= 4; const dObj = new Date(date); const dayName = dObj.toLocaleDateString('it-IT', { weekday: 'long' }); const dayNum = dObj.getDate(); const month = dObj.toLocaleDateString('it-IT', { month: 'short' }); return (<button key={date} onClick={() => toggleAvailability(date)} className={`relative w-full p-4 rounded-xl border transition-all flex items-center gap-4 ${amIAvailable ? 'bg-slate-800 border-lime-400/50' : 'bg-slate-900 border-slate-800 opacity-80'} ${isMatch ? 'ring-2 ring-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : ''}`}><div className="flex flex-col items-center justify-center w-12 h-12 bg-slate-950 rounded-lg border border-slate-700"><span className="text-xs text-slate-500 uppercase">{month}</span><span className="text-xl font-bold text-white">{dayNum}</span></div><div className="flex-1 text-left"><div className="flex items-center gap-2"><span className="capitalize font-bold text-white">{dayName}</span>{isMatch && <span className="bg-lime-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">Si Gioca!</span>}</div><div className="flex -space-x-2 mt-2">{dayAvail.map((a, i) => (<div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-800 flex items-center justify-center text-[10px] text-white">{(a.playerName || '?').charAt(0)}</div>))}</div></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${amIAvailable ? 'border-lime-400 bg-lime-400 text-slate-900' : 'border-slate-600'}`}>{amIAvailable && <Activity size={14} />}</div></button>); })}</div></div>)}
-        {activeTab === 'players' && (<div className="space-y-6"><h2 className="text-2xl font-bold flex items-center gap-2"><Users className="text-lime-400" /> Gestione Giocatori</h2><Card><h3 className="text-sm font-bold text-slate-400 uppercase mb-3">Aggiungi Nuovo</h3><div className="flex flex-col gap-3"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 overflow-hidden relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>{newPlayerPhoto ? (<img src={newPlayerPhoto} alt="Preview" className="w-full h-full object-cover" />) : (<Camera size={20} className="text-slate-500 group-hover:text-lime-400" />)}</div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoSelect(e, setNewPlayerPhoto)} /><div className="flex-1"><input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nome giocatore..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-lime-400" /></div><Button onClick={handleAddPlayerGeneric} className="w-12 !px-0 flex items-center justify-center"><PlusCircle size={20} /></Button></div></div></Card><div className="space-y-2"><h3 className="text-sm font-bold text-slate-400 uppercase ml-1">Lista Completa ({players.length})</h3>{players.map(p => (<div key={p.id} className="flex items-center justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 group"><div className="flex items-center gap-3"><PlayerAvatar player={p} size="md" /><div><div className="font-bold text-white">{p.name}</div>{p.id === currentPlayer?.id && <span className="text-[10px] bg-lime-400/20 text-lime-400 px-2 py-0.5 rounded">Tu</span>}</div></div><div className="flex gap-1"><button onClick={() => handleEditPlayerClick(p)} className="p-2 text-slate-500 hover:text-lime-400 hover:bg-lime-900/10 rounded-lg transition-colors"><Pencil size={18} /></button><button onClick={() => handleDeletePlayerClick(p.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={18} /></button></div></div>))}</div></div>)}
-      </main>
-
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 pb-safe px-1 py-3 flex justify-around items-center z-50">
-        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='dashboard'?'text-lime-400':'text-slate-500'}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">Home</span></button>
-        <button onClick={() => setActiveTab('ranking')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='ranking'?'text-lime-400':'text-slate-500'}`}><Trophy size={20} /><span className="text-[9px] font-bold">Classifica</span></button>
-        <button onClick={() => setActiveTab('tournament')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='tournament'?'text-lime-400':'text-slate-500'}`}><Swords size={20} /><span className="text-[9px] font-bold">Torneo</span></button>
-        <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='calendar'?'text-lime-400':'text-slate-500'}`}><Calendar size={20} /><span className="text-[9px] font-bold">Date</span></button>
-        <button onClick={() => setActiveTab('players')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='players'?'text-lime-400':'text-slate-500'}`}><Users size={20} /><span className="text-[9px] font-bold">Players</span></button>
-        <button onClick={() => setActiveTab('rules')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='rules'?'text-lime-400':'text-slate-500'}`}><BookOpen size={20} /><span className="text-[9px] font-bold">Regole</span></button>
-      </nav>
-    </div>
-  );
-}
+            <Card className="border-l-4 border-l-slate

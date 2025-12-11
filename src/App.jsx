@@ -541,10 +541,11 @@ export default function App() {
             
             {/* QUI HO CAMBIATO LE DIMENSIONI a w-72 h-72 */}
             <div className="relative w-72 h-72 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+              {/* QUI HO RIMOSSO IL drop-shadow DALL'IMMAGINE */}
               <img 
                 src={logo} 
                 alt="Padel Logo" 
-                className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(163,230,53,0.5)]" 
+                className="w-full h-full object-contain" 
               />
             </div>
           </div>

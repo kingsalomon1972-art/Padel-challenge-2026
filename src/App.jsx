@@ -540,7 +540,7 @@ export default function App() {
             {/* HO RIMOSSO IL DIV DEL BAGLIORE CHE ERA QUI */}
             
             {/* QUI HO CAMBIATO LE DIMENSIONI a w-72 h-72 */}
-            <div className="relative w-86 h-86 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+            <div className="relative w-82 h-82 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
               {/* QUI HO RIMOSSO IL drop-shadow DALL'IMMAGINE */}
               <img 
                 src={logo} 
@@ -551,7 +551,7 @@ export default function App() {
           </div>
 
           {/* Testi */}
-          <div className="text-center space-y-2 mt-1">
+          <div className="text-center space-y-2 mt-4">
             <h1 className="text-5xl font-black italic tracking-tighter text-white">
               PADEL
             </h1>

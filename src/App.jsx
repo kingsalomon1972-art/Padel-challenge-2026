@@ -618,7 +618,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
         <div onClick={() => setShowSplash(false)} className="cursor-pointer flex flex-col items-center gap-6 group select-none">
           <div className="relative">
-            <div className="relative w-96 h-96 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+            <div className="relative w-80 h-80 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
               <img src={logo} alt="Padel Logo" className="w-full h-full object-contain" />
             </div>
           </div>

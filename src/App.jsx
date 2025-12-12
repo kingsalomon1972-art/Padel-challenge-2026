@@ -47,7 +47,8 @@ import {
   Unlock, 
   LogIn,
   Zap,
-  AlertCircle // Icona per i mancanti
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 
 // --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
@@ -336,8 +337,7 @@ export default function App() {
   const [availabilities, setAvailabilities] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(null);
   
-  // STATO CALENDARIO
-  const [calendarView, setCalendarView] = useState('current'); // 'current' | 'next'
+  const [calendarView, setCalendarView] = useState('current'); 
 
   const [isEditingProfile, setIsEditingProfile] = useState(false); 
   const [isAddingMatch, setIsAddingMatch] = useState(false);
@@ -666,16 +666,12 @@ export default function App() {
   const calendarDates = useMemo(() => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0 = Gen, 11 = Dic
+    const currentMonth = today.getMonth(); 
 
     if (calendarView === 'current') {
       const days = getDaysInMonth(currentYear, currentMonth);
-      // Filtra per mostrare solo da oggi in poi se è il mese corrente, oppure tutti se preferisci
-      // Per semplicità mostriamo tutti i giorni del mese, o da oggi in poi.
-      // Mostriamo da OGGI alla fine del mese
       return days.filter(d => d >= today.toISOString().split('T')[0]);
     } else {
-      // Mese successivo
       let nextMonth = currentMonth + 1;
       let year = currentYear;
       if (nextMonth > 11) { nextMonth = 0; year++; }
@@ -692,19 +688,25 @@ export default function App() {
     return date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
   }, [calendarView]);
 
-  // CALCOLO GIOCATORI MANCANTI (PIGRONI)
+  // CALCOLO PIGRONI
   const missingPlayers = useMemo(() => {
       const activeDates = calendarDates;
-      // Trova chi ha almeno una disponibilità in questo set di date
       const availablePlayerIds = new Set();
       availabilities.forEach(a => {
           if (activeDates.includes(a.date)) {
               availablePlayerIds.add(a.playerId);
           }
       });
-      // Filtra i giocatori che NON sono nel set
       return players.filter(p => !availablePlayerIds.has(p.id));
   }, [players, availabilities, calendarDates]);
+
+  // CALCOLO MATCH CONFERMATI (SUMMARY)
+  const upcomingMatches = useMemo(() => {
+      return calendarDates.filter(date => {
+          const count = availabilities.filter(a => a.date === date).length;
+          return count >= 4;
+      });
+  }, [calendarDates, availabilities]);
 
 
   // --- RENDER START ---
@@ -1057,33 +1059,6 @@ export default function App() {
           </div>
         )}
 
-        {/* RULES, CALENDAR, PLAYERS */}
-        {activeTab === 'rules' && (
-        <div className="space-y-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="text-lime-400" /> Regolamento</h2>
-            <div className="space-y-4">
-            <Card className="border-l-4 border-l-lime-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Netta (2-0)</h3><div className="bg-lime-400/20 text-lime-400 px-2 py-1 rounded text-xs font-bold">Best Scenar</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-lime-400"/><span><strong>8 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Minus size={14} className="text-slate-500"/><span><strong>0.2 Punti</strong> per ogni game vinto ai perdenti.</span></li></ul></Card>
-            <Card className="border-l-4 border-l-yellow-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Combattuta (2-1)</h3><div className="bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded text-xs font-bold">Battle</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-yellow-400"/><span><strong>6 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Check size={14} className="text-slate-400"/><span><strong>3 Punti</strong> a testa per i perdenti.</span></li></ul></Card>
-            <Card className="border-l-4 border-l-slate-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Pareggio (1-1)</h3><div className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-bold">Draw</div></div><p className="text-sm text-slate-400 mb-2">Se la partita finisce un set pari, viene considerata pareggio.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Calculator size={14} className="text-blue-400"/><span><strong>0.3 Punti</strong> per ogni game vinto a tutti i giocatori.</span></li></ul></Card>
-            
-            <Card className="border-l-4 border-l-orange-500 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Tie-Break (10 punti)</h3><div className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-xs font-bold">Extra</div></div><p className="text-sm text-slate-400 mb-2">Se avanza tempo e si gioca un tie-break ai 10.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Zap size={14} className="text-orange-400"/><span><strong>2 Punti</strong> secchi ai vincitori.</span></li></ul></Card>
-
-            <Card className="border-l-4 border-l-red-400 bg-slate-900/80">
-                <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold text-white text-lg">Regola Aurea</h3>
-                <div className="bg-red-400/20 text-red-400 px-2 py-1 rounded text-xs font-bold">Importante</div>
-                </div>
-                <ul className="space-y-2 text-sm text-slate-300">
-                <li className="flex items-center gap-2">
-                    <Pizza size={14} className="text-red-400"/>
-                    <span><strong>Chi perde paga la pizza.</strong> Chi vince gode e mangia.</span>
-                </li>
-                </ul>
-            </Card>
-            </div>
-        </div>
-        )}
-
         {activeTab === 'calendar' && (<div className="space-y-4"><div className="flex gap-2 mb-4"><button onClick={() => setCalendarView('current')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${calendarView === 'current' ? 'bg-lime-400 text-slate-900 shadow-lg' : 'bg-slate-800 text-slate-400'}`}>Mese Corrente</button><button onClick={() => setCalendarView('next')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${calendarView === 'next' ? 'bg-lime-400 text-slate-900 shadow-lg' : 'bg-slate-800 text-slate-400'}`}>Mese Prossimo</button></div>
         
         {/* LISTA PIGRONI */}
@@ -1102,6 +1077,35 @@ export default function App() {
                     ))}
                 </div>
             </div>
+        )}
+
+        {/* MATCH CONFERMATI SUMMARY */}
+        {upcomingMatches.length > 0 && (
+           <div className="mb-6">
+             <h3 className="text-lime-400 font-bold text-sm mb-2 uppercase tracking-wider flex items-center gap-2">
+                <CheckCircle2 size={16} /> Partite Confermate
+             </h3>
+             <div className="space-y-2">
+               {upcomingMatches.map(date => {
+                   const confirmedPlayers = availabilities.filter(a => a.date === date).map(a => players.find(p => p.id === a.playerId));
+                   return (
+                   <div key={date} className="bg-lime-900/10 border border-lime-500/30 p-3 rounded-xl flex items-center justify-between">
+                       <div className="flex flex-col">
+                           <span className="text-white font-bold text-sm">{new Date(date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                           <span className="text-[10px] text-lime-400 uppercase font-black tracking-wider">Si Gioca!</span>
+                       </div>
+                       <div className="flex -space-x-2">
+                           {confirmedPlayers.map((p, i) => (
+                               <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-900 z-10">
+                                   <PlayerAvatar player={p} size="sm" className="w-full h-full" />
+                               </div>
+                           ))}
+                       </div>
+                   </div>
+                   );
+               })}
+             </div>
+           </div>
         )}
 
         <h2 className="text-2xl font-bold flex items-center gap-2 capitalize"><Calendar className="text-lime-400" /> {monthLabel}</h2><div className="grid grid-cols-1 gap-3">{calendarDates.map(date => { const dayAvail = availabilities.filter(a => a.date === date); const amIAvailable = dayAvail.some(a => a.playerId === currentPlayer.id); const isMatch = dayAvail.length >= 4; const dObj = new Date(date); const dayName = dObj.toLocaleDateString('it-IT', { weekday: 'long' }); const dayNum = dObj.getDate(); const month = dObj.toLocaleDateString('it-IT', { month: 'short' }); return (<button key={date} onClick={() => toggleAvailability(date)} className={`relative w-full p-4 rounded-xl border transition-all flex items-center gap-4 ${amIAvailable ? 'bg-slate-800 border-lime-400/50' : 'bg-slate-900 border-slate-800 opacity-80'} ${isMatch ? 'ring-2 ring-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : ''}`}><div className="flex flex-col items-center justify-center w-12 h-12 bg-slate-950 rounded-lg border border-slate-700"><span className="text-xs text-slate-500 uppercase">{month}</span><span className="text-xl font-bold text-white">{dayNum}</span></div><div className="flex-1 text-left"><div className="flex items-center gap-2"><span className="capitalize font-bold text-white">{dayName}</span>{isMatch && <span className="bg-lime-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">SI GIOCA!</span>}</div><div className="flex -space-x-2 mt-2">{dayAvail.map((a, i) => (<div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-800 flex items-center justify-center text-[10px] text-white">{(a.playerName || '?').charAt(0)}</div>))}</div></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${amIAvailable ? 'border-lime-400 bg-lime-400 text-slate-900' : 'border-slate-600'}`}>{amIAvailable && <Activity size={14} />}</div></button>); })}</div></div>)}

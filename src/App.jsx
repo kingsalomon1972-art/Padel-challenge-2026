@@ -610,13 +610,13 @@ export default function App() {
       if (winner === 'team1') { 
           team1.forEach(pid => { 
               if(stats[pid]) {
-                  if (m.type !== 'tiebreak') stats[pid].wins++; // NON contare win se tiebreak
+                  if (m.type !== 'tiebreak') stats[pid].wins++; 
                   if(m.type === 'tiebreak') stats[pid].tieBreaksWon++;
               }
           }); 
           team2.forEach(pid => { 
               if(stats[pid]) {
-                  if (m.type !== 'tiebreak') stats[pid].losses++; // NON contare loss se tiebreak
+                  if (m.type !== 'tiebreak') stats[pid].losses++; 
                   if(m.type === 'tiebreak') stats[pid].tieBreaksLost++;
               }
           }); 

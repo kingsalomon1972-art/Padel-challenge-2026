@@ -540,7 +540,7 @@ export default function App() {
             {/* HO RIMOSSO IL DIV DEL BAGLIORE CHE ERA QUI */}
             
             {/* QUI HO CAMBIATO LE DIMENSIONI a w-72 h-72 */}
-            <div className="relative w-72 h-72 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+            <div className="relative w-80 h-80 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
               {/* QUI HO RIMOSSO IL drop-shadow DALL'IMMAGINE */}
               <img 
                 src={logo} 

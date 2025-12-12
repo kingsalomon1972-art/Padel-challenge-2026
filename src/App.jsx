@@ -636,7 +636,6 @@ export default function App() {
           }); 
       }
       else { 
-          // I pareggi non esistono nei tie-break
           team1.forEach(pid => { if(stats[pid]) stats[pid].draws++; }); 
           team2.forEach(pid => { if(stats[pid]) stats[pid].draws++; }); 
       }
@@ -661,7 +660,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
         <div onClick={() => setShowSplash(false)} className="cursor-pointer flex flex-col items-center gap-6 group select-none">
           <div className="relative">
-            <div className="relative w-80 h-80 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+            <div className="relative w-96 h-96 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
               <img src={logo} alt="Padel Logo" className="w-full h-full object-contain" />
             </div>
           </div>
@@ -835,172 +834,6 @@ export default function App() {
             <div className="h-4"></div>
             <Button onClick={() => openMatchModal()} className="w-full py-4 text-lg"><PlusCircle size={24} /> Registra Risultato Libero</Button>
           </>
-        )}
-
-        {/* VIEW: RANKING & OTHERS */}
-        {activeTab === 'ranking' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center"><h2 className="text-2xl font-bold flex items-center gap-2"><Trophy className="text-yellow-400" /> Classifica</h2><button onClick={() => setShowChart(!showChart)} className="bg-lime-400 text-slate-900 p-2.5 rounded-xl hover:bg-lime-300 shadow-lg shadow-lime-900/20 transition-all active:scale-95">{showChart ? <LayoutDashboard size={20}/> : <LineChart size={20}/>}</button></div>
-            {showChart ? (<ProgressChart players={players} matches={matches} />) : (ranking.map((p, idx) => (
-                <div key={p.id} className="flex flex-col bg-slate-800 p-4 rounded-xl border border-slate-700 gap-3 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-8 h-8 flex items-center justify-center font-bold rounded-full ${idx === 0 ? 'bg-yellow-400 text-black' : idx === 1 ? 'bg-slate-400 text-black' : idx === 2 ? 'bg-orange-700 text-white' : 'bg-slate-700 text-slate-400'}`}>{idx + 1}</div>
-                            <div className="flex items-center gap-3"><PlayerAvatar player={p} size="md" /><span className="font-bold text-xl">{p.name}</span></div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-3xl font-black text-lime-400">{p.points % 1 !== 0 ? p.points.toFixed(1) : p.points}</div>
-                            <div className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Punti Totali</div>
-                        </div>
-                    </div>
-                    
-                    {/* STATISTICHE AGGIORNATE A DUE RIGHE */}
-                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-700">
-                        <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Vinte</div><div className="text-sm font-bold text-white">{p.wins}</div></div>
-                        <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Pari</div><div className="text-sm font-bold text-slate-300">{p.draws}</div></div>
-                        <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Perse</div><div className="text-sm font-bold text-slate-400">{p.losses}</div></div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                        <div className="bg-lime-900/10 border border-lime-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-lime-500/70 uppercase font-bold">Game V</div><div className="text-sm font-bold text-lime-400">{p.gamesWon}</div></div>
-                        <div className="bg-red-900/10 border border-red-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-red-500/70 uppercase font-bold">Game P</div><div className="text-sm font-bold text-red-400">{p.gamesLost}</div></div>
-                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-orange-500/70 uppercase font-bold">TB Vinti</div><div className="text-sm font-bold text-orange-400">{p.tieBreaksWon}</div></div>
-                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-orange-500/70 uppercase font-bold">TB Persi</div><div className="text-sm font-bold text-red-400 opacity-70">{p.tieBreaksLost}</div></div>
-                    </div>
-                </div>
-            )))}
-          </div>
-        )}
-
-        {/* TOURNAMENT VIEW - CORRETTA */}
-        {activeTab === 'tournament' && !isAddingMatch && !isAddingTieBreak && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold flex items-center gap-2"><Swords className="text-lime-400" /> Torneo</h2>
-              {matches.length > 0 && (<button onClick={() => { if(window.confirm("Attenzione: Questo cancellerà TUTTE le partite. Continuare?")) matches.forEach(m => deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'matches', m.id))); }} className="text-xs text-red-400 underline hover:text-red-300">Reset Tutto</button>)}
-            </div>
-
-            {matches.length === 0 && (
-              <Card className="text-center py-8">
-                 <Swords size={48} className="mx-auto text-slate-600 mb-4" />
-                 <h3 className="text-lg font-bold text-white mb-2">Nessun Torneo Attivo</h3>
-                 {players.length < 4 ? 
-                    <div className="text-yellow-400 text-sm mb-4 bg-yellow-400/10 p-2 rounded border border-yellow-400/20"><AlertTriangle size={16} className="inline mr-1"/> Servono 4 giocatori! Vai su "Players".</div> :
-                    <p className="text-slate-400 text-sm mb-6">Genera un calendario dove tutti giocano con e contro tutti (2 volte).</p>
-                 }
-                 <Button onClick={generateTournament} className="w-full" disabled={players.length < 4}>Genera Calendario (4P)</Button>
-              </Card>
-            )}
-
-            <div className="space-y-4">
-              {matches.filter(m => m.type !== 'tiebreak').map((m, idx) => {
-                if(!m || !m.team1 || !m.team2) return null; 
-                const isPlayed = !!m.score;
-                const dateDisplay = new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
-                const { winner, t1Points, t2Points } = calculatePoints(m.score);
-                return (
-                  <div key={m.id} className="relative group">
-                     <button onClick={(e) => askDeleteConfirmation(e, m.id)} className="absolute top-2 right-2 z-20 p-2 bg-slate-900/80 hover:bg-red-500 text-slate-400 hover:text-white rounded-lg shadow-sm border border-slate-700 transition-all" title="Elimina"><Trash2 size={16}/></button>
-                    <Card onClick={() => openMatchModal(m)} className={`border-l-4 ${isPlayed ? 'border-l-slate-600 opacity-90' : 'border-l-lime-400'} hover:bg-slate-800/80 transition-all pr-12`}>
-                      <div className="flex justify-between items-center mb-3"><div className="flex items-center gap-2"><span className={`text-xs font-bold px-2 py-1 rounded ${isPlayed ? 'bg-slate-700 text-slate-400' : 'bg-lime-400/20 text-lime-400'}`}>{m.round ? `Match ${m.round}` : 'Libera'}</span><span className="text-xs text-slate-400 flex items-center gap-1"><Calendar size={10} /> {dateDisplay}</span></div><div className="flex items-center gap-2 mr-6">{!isPlayed && <span className="text-xs text-lime-400 animate-pulse font-bold">DA GIOCARE</span>}{isPlayed && <span className="text-xs text-slate-500 font-medium flex items-center gap-1"><Check size={12}/> Completata</span>}</div></div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className={`flex-1 p-2 rounded-lg text-center transition-colors ${isPlayed && (winner === 'team1' || winner === 'draw') ? 'bg-lime-900/20 border border-lime-500/30' : 'bg-slate-900/50'}`}><div className={`text-sm ${isPlayed && (winner === 'team1' || winner === 'draw') ? 'font-black text-lime-400' : 'font-medium text-white'}`}>{players.find(p=>p.id===m.team1[0])?.name || '?'}</div><div className={`text-sm ${isPlayed && (winner === 'team1' || winner === 'draw') ? 'font-black text-lime-400' : 'font-medium text-white'}`}>{players.find(p=>p.id===m.team1[1])?.name || '?'}</div>{isPlayed && <div className="text-xs text-lime-400 mt-1 font-mono">+{t1Points.toFixed(1)}</div>}</div>
-                        <div className="flex flex-col items-center justify-center w-16">{isPlayed ? (<span className="text-xl font-black text-white tracking-widest">{String(m.score)}</span>) : (<span className="font-black text-slate-600 italic text-lg">VS</span>)}</div>
-                        <div className={`flex-1 p-2 rounded-lg text-center transition-colors ${isPlayed && (winner === 'team2' || winner === 'draw') ? 'bg-lime-900/20 border border-lime-500/30' : 'bg-slate-900/50'}`}><div className={`text-sm ${isPlayed && (winner === 'team2' || winner === 'draw') ? 'font-black text-lime-400' : 'font-medium text-white'}`}>{players.find(p=>p.id===m.team2[0])?.name || '?'}</div><div className={`text-sm ${isPlayed && (winner === 'team2' || winner === 'draw') ? 'font-black text-lime-400' : 'font-medium text-white'}`}>{players.find(p=>p.id===m.team2[1])?.name || '?'}</div>{isPlayed && <div className="text-xs text-lime-400 mt-1 font-mono">+{t2Points.toFixed(1)}</div>}</div>
-                      </div>
-                    </Card>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* SEZIONE TIE BREAK DEDICATA */}
-            <div className="pt-4 border-t border-slate-800">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-orange-400 flex items-center gap-2"><Zap size={20}/> Extra: Tie-Break</h3>
-                    <button onClick={() => setIsAddingTieBreak(true)} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-xs font-bold hover:bg-orange-500 hover:text-white transition-all">+ Aggiungi</button>
-                </div>
-                <div className="space-y-2">
-                    {matches.filter(m => m.type === 'tiebreak').length === 0 && <div className="text-xs text-slate-500 text-center py-2">Nessun tie-break giocato.</div>}
-                    {matches.filter(m => m.type === 'tiebreak').map(m => (
-                        <div key={m.id} className="relative group">
-                            <button onClick={(e) => askDeleteConfirmation(e, m.id)} className="absolute top-2 right-2 z-20 p-1.5 bg-slate-900/80 hover:bg-red-500 text-slate-400 hover:text-white rounded-lg shadow-sm border border-slate-700 transition-all" title="Elimina"><Trash2 size={14}/></button>
-                            <Card className="border-l-4 border-l-orange-500 bg-slate-900/50">
-                                <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
-                                    <span>{new Date(m.date).toLocaleDateString()}</span>
-                                    <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded">{m.score}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className={`flex-1 text-center p-2 rounded ${m.winner === 'team1' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'text-slate-400'}`}>
-                                        <div className="text-xs">{players.find(p=>p.id===m.team1[0])?.name}</div>
-                                        <div className="text-xs">{players.find(p=>p.id===m.team1[1])?.name}</div>
-                                    </div>
-                                    <div className="font-black text-slate-600 text-xs">VS</div>
-                                    <div className={`flex-1 text-center p-2 rounded ${m.winner === 'team2' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'text-slate-400'}`}>
-                                        <div className="text-xs">{players.find(p=>p.id===m.team2[0])?.name}</div>
-                                        <div className="text-xs">{players.find(p=>p.id===m.team2[1])?.name}</div>
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
-                    ))}
-                </div>
-            </div>
-          </div>
-        )}
-
-        {isAddingTieBreak && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 fixed inset-0 z-[60] bg-slate-950 flex flex-col p-4 overflow-y-auto">
-            <div className="flex items-center justify-between mb-6"><h2 className="text-2xl font-bold flex items-center gap-2"><Zap className="text-orange-400"/> Registra Tie-Break</h2><button onClick={() => setIsAddingTieBreak(false)} className="text-slate-400 p-2">Annulla</button></div>
-            <div className="space-y-6 flex-1">
-                <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/30 text-orange-200 text-sm text-center">
-                    <p>Il Tie-Break ai 10 punti assegna <strong>2 punti</strong> secchi alla coppia vincitrice.</p>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                    {/* INPUT PUNTEGGIO */}
-                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                        <Input 
-                            label="Risultato (es. 10-8)" 
-                            value={newMatchData.score} 
-                            onChange={e => setNewMatchData({...newMatchData, score: e.target.value})} 
-                            placeholder="10-8" 
-                        />
-                    </div>
-
-                    <div className="p-4 rounded-2xl border bg-slate-900 border-slate-700">
-                        <label className="text-slate-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team A</label>
-                        <div className="space-y-3">
-                            {[1, 2].map(num => (<select key={num} className="bg-slate-800 text-white p-3 rounded-xl text-sm border border-slate-600 w-full" value={newMatchData[`team1p${num}`]} onChange={e => setNewMatchData({...newMatchData, [`team1p${num}`]: e.target.value})}><option value="">Giocatore {num}</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>))}
-                        </div>
-                        <Button onClick={() => handleSaveTieBreak('team1')} className="w-full mt-4 bg-slate-700 hover:bg-orange-500 hover:text-white border border-slate-600">🏆 Vince A</Button>
-                    </div>
-                    
-                    <div className="flex items-center justify-center font-black text-slate-700">VS</div>
-
-                    <div className="p-4 rounded-2xl border bg-slate-900 border-slate-700">
-                        <label className="text-slate-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team B</label>
-                        <div className="space-y-3">
-                            {[1, 2].map(num => (<select key={num} className="bg-slate-800 text-white p-3 rounded-xl text-sm border border-slate-600 w-full" value={newMatchData[`team2p${num}`]} onChange={e => setNewMatchData({...newMatchData, [`team2p${num}`]: e.target.value})}><option value="">Giocatore {num}</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>))}
-                        </div>
-                        <Button onClick={() => handleSaveTieBreak('team2')} className="w-full mt-4 bg-slate-700 hover:bg-orange-500 hover:text-white border border-slate-600">🏆 Vince B</Button>
-                    </div>
-                </div>
-            </div>
-            </div>
-        )}
-
-        {isAddingMatch && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 fixed inset-0 z-[60] bg-slate-950 flex flex-col p-4 overflow-y-auto">
-            <div className="flex items-center justify-between mb-6"><h2 className="text-2xl font-bold">{editingMatchId ? 'Modifica Partita' : 'Nuova Partita'}</h2><button onClick={closeMatchModal} className="text-slate-400 p-2">Annulla</button></div>
-            <div className="space-y-6 flex-1">
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800"><Input label="Data Partita" type="date" value={newMatchData.date} onChange={e => setNewMatchData({...newMatchData, date: e.target.value})} /><p className="text-xs text-slate-500 mt-[-10px] mb-2">Cambia la data se avete giocato in un giorno diverso da oggi.</p></div>
-              <div className="grid grid-cols-1 gap-4">
-                  <div className={`p-4 rounded-2xl border ${editingMatchId ? 'bg-slate-900 border-slate-700' : 'bg-lime-900/10 border-lime-500/30'}`}><label className="text-lime-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team A</label><div className="space-y-3">{[1, 2].map(num => (<select key={num} disabled={!!editingMatchId} className="bg-slate-800 text-white p-3 rounded-xl text-sm border border-slate-600 w-full disabled:opacity-70 disabled:cursor-not-allowed" value={newMatchData[`team1p${num}`]} onChange={e => setNewMatchData({...newMatchData, [`team1p${num}`]: e.target.value})}><option value="">Giocatore {num}</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>))}</div></div>
-                  <div className={`p-4 rounded-2xl border ${editingMatchId ? 'bg-slate-900 border-slate-700' : 'bg-red-900/10 border-red-500/30'}`}><label className="text-red-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team B</label><div className="space-y-3">{[1, 2].map(num => (<select key={num} disabled={!!editingMatchId} className="bg-slate-800 text-white p-3 rounded-xl text-sm border border-slate-600 w-full disabled:opacity-70 disabled:cursor-not-allowed" value={newMatchData[`team2p${num}`]} onChange={e => setNewMatchData({...newMatchData, [`team2p${num}`]: e.target.value})}><option value="">Giocatore {num}</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>))}</div></div>
-              </div>
-              <div className="pt-4 space-y-3"><Input label="Punteggio (es. 6-4 6-2)" value={newMatchData.score} onChange={e => setNewMatchData({...newMatchData, score: e.target.value})} placeholder="6-3 6-4" /><p className="text-xs text-slate-500">Usa il formato corretto per calcolare i punti (es: 6-2 6-4).</p><Button onClick={handleSaveMatchResult} className="w-full py-4 text-lg shadow-xl shadow-lime-900/20">{editingMatchId ? 'Salva Risultato' : 'Crea Partita'}</Button>{editingMatchId && (<Button onClick={(e) => askDeleteConfirmation(e, editingMatchId)} variant="danger" className="w-full"><Trash2 size={18} /> Elimina Partita</Button>)}</div>
-            </div>
-          </div>
         )}
 
         {/* VIEW: RANKING & OTHERS */}

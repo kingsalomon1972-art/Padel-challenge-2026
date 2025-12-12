@@ -42,7 +42,11 @@ import {
   Image as ImageIcon,
   LineChart,
   RefreshCw,
-  Pizza
+  Pizza,
+  Lock, 
+  Unlock, 
+  LogIn,
+  Zap // Icona per il Tie-Break
 } from 'lucide-react';
 
 // --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
@@ -238,12 +242,23 @@ const ProgressChart = ({ players, matches }) => {
   let maxPoints = 10; 
   
   sortedMatches.forEach(m => {
-    const { t1Points, t2Points } = calculatePoints(m.score);
+    let t1P = 0, t2P = 0;
+    
+    // GESTIONE PUNTI (Match vs TieBreak)
+    if (m.type === 'tiebreak') {
+      if (m.winner === 'team1') { t1P = 2; t2P = 0; }
+      else { t1P = 0; t2P = 2; }
+    } else {
+      const p = calculatePoints(m.score);
+      t1P = p.t1Points;
+      t2P = p.t2Points;
+    }
+
     players.forEach(p => {
       const currentPoints = history[p.id][history[p.id].length - 1];
       let newPoints = currentPoints;
-      if (m.team1 && m.team1.includes(p.id)) newPoints += t1Points;
-      if (m.team2 && m.team2.includes(p.id)) newPoints += t2Points;
+      if (m.team1 && m.team1.includes(p.id)) newPoints += t1P;
+      if (m.team2 && m.team2.includes(p.id)) newPoints += t2P;
       history[p.id].push(newPoints);
       if (newPoints > maxPoints) maxPoints = newPoints;
     });
@@ -301,7 +316,7 @@ const ProgressChart = ({ players, matches }) => {
 // --- MAIN APP COMPONENT ---
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true); // <--- STATO SPLASH SCREEN
+  const [showSplash, setShowSplash] = useState(true); 
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChart, setShowChart] = useState(false);
@@ -312,6 +327,7 @@ export default function App() {
   
   const [isEditingProfile, setIsEditingProfile] = useState(false); 
   const [isAddingMatch, setIsAddingMatch] = useState(false);
+  const [isAddingTieBreak, setIsAddingTieBreak] = useState(false); // NUOVO STATO TIE BREAK
   const [editingMatchId, setEditingMatchId] = useState(null); 
   const [matchToDelete, setMatchToDelete] = useState(null); 
   const [playerToDelete, setPlayerToDelete] = useState(null);
@@ -321,6 +337,10 @@ export default function App() {
     team1p1: '', team1p2: '', team2p1: '', team2p2: '', score: '', date: new Date().toISOString().split('T')[0]
   });
   const [profileName, setProfileName] = useState('');
+  const [profilePassword, setProfilePassword] = useState(''); 
+  const [loginPassword, setLoginPassword] = useState(''); 
+  const [loginTargetId, setLoginTargetId] = useState(null); 
+
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerPhoto, setNewPlayerPhoto] = useState(null);
   
@@ -392,20 +412,48 @@ export default function App() {
 
   const handleCreateProfile = async () => {
     if (!profileName.trim()) return;
+    if (!profilePassword.trim()) {
+      alert("Devi scegliere una password per il tuo profilo!");
+      return;
+    }
     try {
       const docRef = await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'players'), {
         name: profileName,
+        password: profilePassword, 
         photoUrl: newPlayerPhoto,
         createdAt: serverTimestamp(),
         createdBy: user.uid
       });
-      const newPlayer = { id: docRef.id, name: profileName, photoUrl: newPlayerPhoto };
+      const newPlayer = { id: docRef.id, name: profileName, photoUrl: newPlayerPhoto, password: profilePassword };
       setCurrentPlayer(newPlayer);
       localStorage.setItem('padel_player_id', docRef.id);
       setProfileName('');
+      setProfilePassword('');
       setNewPlayerPhoto(null);
       setIsEditingProfile(false);
     } catch (e) { console.error(e); }
+  };
+
+  const handleLoginClick = (player) => {
+    if (!player.password) {
+      setCurrentPlayer(player);
+      localStorage.setItem('padel_player_id', player.id);
+    } else {
+      setLoginTargetId(player.id);
+      setLoginPassword('');
+    }
+  };
+
+  const performLogin = () => {
+    const target = players.find(p => p.id === loginTargetId);
+    if (target && target.password === loginPassword) {
+      setCurrentPlayer(target);
+      localStorage.setItem('padel_player_id', target.id);
+      setLoginTargetId(null);
+      setLoginPassword('');
+    } else {
+      alert("Password errata!");
+    }
   };
 
   const handleAddPlayerGeneric = async () => {
@@ -429,6 +477,7 @@ export default function App() {
     try {
       const updateData = { name: playerToEdit.name };
       if (playerToEdit.newPhoto) updateData.photoUrl = playerToEdit.newPhoto;
+      if (playerToEdit.password) updateData.password = playerToEdit.password;
       await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'players', playerToEdit.id), updateData);
       setPlayerToEdit(null);
     } catch (err) { console.error(err); }
@@ -482,6 +531,27 @@ export default function App() {
     closeMatchModal();
   };
 
+  // NUOVA FUNZIONE PER SALVARE TIE BREAK
+  const handleSaveTieBreak = async (winnerTeam) => {
+    const { team1p1, team1p2, team2p1, team2p2, date } = newMatchData;
+    if (!team1p1 || !team1p2 || !team2p1 || !team2p2) return;
+    
+    const matchData = { 
+        score: '10-X', // Placeholder per indicare tiebreak
+        date: date || new Date().toISOString().split('T')[0], 
+        team1: [team1p1, team1p2], 
+        team2: [team2p1, team2p2], 
+        recordedBy: currentPlayer?.name || 'Anonimo', 
+        winner: winnerTeam, 
+        status: 'completed',
+        type: 'tiebreak' // MARCATORE SPECIALE
+    };
+    
+    await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'matches'), { ...matchData, createdAt: serverTimestamp() });
+    setIsAddingTieBreak(false);
+    setNewMatchData({ team1p1: '', team1p2: '', team2p1: '', team2p2: '', score: '', date: new Date().toISOString().split('T')[0] });
+  };
+
   const openMatchModal = (match = null) => {
     if (match) {
       setEditingMatchId(match.id);
@@ -504,8 +574,23 @@ export default function App() {
     const stats = {};
     players.forEach(p => { stats[p.id] = { id: p.id, name: p.name, photoUrl: p.photoUrl, wins: 0, losses: 0, draws: 0, played: 0, points: 0, gamesWon: 0, gamesLost: 0 }; });
     matches.filter(m => m.score && m.status !== 'scheduled').forEach(m => {
-      const { t1Points, t2Points, winner, t1Games, t2Games } = calculatePoints(m.score);
-      // Ensure arrays exist before mapping
+      
+      let t1Points = 0, t2Points = 0, t1Games = 0, t2Games = 0, winner = 'draw';
+
+      // CALCOLO PUNTI DIVERSO SE E' UN TIE BREAK
+      if (m.type === 'tiebreak') {
+          winner = m.winner;
+          if (winner === 'team1') { t1Points = 2; t2Points = 0; }
+          else { t1Points = 0; t2Points = 2; }
+      } else {
+          const p = calculatePoints(m.score);
+          t1Points = p.t1Points;
+          t2Points = p.t2Points;
+          t1Games = p.t1Games;
+          t2Games = p.t2Games;
+          winner = p.winner;
+      }
+
       const team1 = m.team1 || [];
       const team2 = m.team2 || [];
 
@@ -527,70 +612,76 @@ export default function App() {
 
   // --- RENDER START ---
 
-  // 1. SPLASH SCREEN (Con il tuo Logo)
+  // 1. SPLASH SCREEN
   if (showSplash) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
-        <div 
-          onClick={() => setShowSplash(false)}
-          className="cursor-pointer flex flex-col items-center gap-6 group select-none"
-        >
-          {/* Cerchio Logo con effetto pulsazione e hover */}
+        <div onClick={() => setShowSplash(false)} className="cursor-pointer flex flex-col items-center gap-6 group select-none">
           <div className="relative">
-            {/* HO RIMOSSO IL DIV DEL BAGLIORE CHE ERA QUI */}
-            
-            {/* QUI HO CAMBIATO LE DIMENSIONI a w-72 h-72 */}
-            <div className="relative w-80 h-80 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
-              {/* QUI HO RIMOSSO IL drop-shadow DALL'IMMAGINE */}
-              <img 
-                src={logo} 
-                alt="Padel Logo" 
-                className="w-full h-full object-contain" 
-              />
+            <div className="relative w-96 h-96 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
+              <img src={logo} alt="Padel Logo" className="w-full h-full object-contain" />
             </div>
           </div>
-
-          {/* Testi */}
           <div className="text-center space-y-2 mt-2">
-            <h1 className="text-5xl font-black italic tracking-tighter text-white">
-              PADEL
-            </h1>
-            <div className="text-4xl font-black text-lime-400 tracking-widest">
-              CHALLENGE
-            </div>
-            <div className="text-xl font-bold text-slate-500 tracking-[0.5em] mt-2">
-              2026
-            </div>
+            <h1 className="text-5xl font-black italic tracking-tighter text-white">PADEL</h1>
+            <div className="text-4xl font-black text-lime-400 tracking-widest">CHALLENGE</div>
+            <div className="text-xl font-bold text-slate-500 tracking-[0.5em] mt-2">2026</div>
           </div>
-
-          {/* Hint per cliccare */}
-          <div className="absolute bottom-12 text-slate-500 text-xs uppercase tracking-widest animate-bounce">
-            Tocca per entrare
-          </div>
+          <div className="absolute bottom-12 text-slate-500 text-xs uppercase tracking-widest animate-bounce">Tocca per entrare</div>
         </div>
       </div>
     );
   }
 
-  // 2. ERRORI CONFIGURAZIONE
-  if (!isConfigured) return <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center"><div className="w-20 h-20 bg-yellow-400/20 rounded-full flex items-center justify-center text-yellow-400 mb-6 animate-pulse"><Database size={40} /></div><h1 className="text-3xl font-black mb-2">Database Non Collegato</h1><p className="text-slate-400 mb-8 max-w-md">Inserisci le chiavi Firebase nel codice.</p></div>;
-  
-  // 3. CARICAMENTO
+  // 2. ERRORI
+  if (!isConfigured) return <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center"><div className="w-20 h-20 bg-yellow-400/20 rounded-full flex items-center justify-center text-yellow-400 mb-6 animate-pulse"><Database size={40} /></div><h1 className="text-3xl font-black mb-2">Database Non Collegato</h1></div>;
   if (!user) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Caricamento...</div>;
 
-  // 4. SELEZIONE PROFILO (LOGIN)
+  // 3. SELEZIONE PROFILO (LOGIN)
   if (!currentPlayer && !isEditingProfile) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center">
+      <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center relative">
+        {loginTargetId && (
+          <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <Card className="w-full max-w-xs border-lime-400/50 shadow-2xl shadow-lime-900/20">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-lime-400 flex items-center justify-center mb-2">
+                  <PlayerAvatar player={players.find(p=>p.id===loginTargetId)} size="lg" className="w-full h-full border-none" />
+                </div>
+                <h3 className="text-lg font-bold">Ciao, {players.find(p=>p.id===loginTargetId)?.name}!</h3>
+                <Input type="password" label="Inserisci la tua Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="****" />
+                <div className="flex gap-2 w-full">
+                  <Button onClick={() => setLoginTargetId(null)} variant="secondary" className="flex-1">Annulla</Button>
+                  <Button onClick={performLogin} className="flex-1">Entra</Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
         <div className="w-full max-w-md space-y-8 text-center">
           <div><div className="mx-auto w-24 h-24 mb-4 drop-shadow-xl"><img src={logo} alt="Logo" className="w-full h-full object-contain" /></div><h1 className="text-4xl font-black italic tracking-tighter">PADEL CHALLENGE <span className="text-lime-400">2026</span></h1></div>
-          <Card><h2 className="text-xl font-bold mb-4">Chi sei?</h2><div className="grid grid-cols-1 gap-3">{players.map(p => (<button key={p.id} onClick={() => { setCurrentPlayer(p); localStorage.setItem('padel_player_id', p.id); }} className="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl flex items-center gap-3 transition-all text-left"><PlayerAvatar player={p} size="sm" /><span className="font-bold">{p.name}</span></button>))} <button onClick={() => setIsEditingProfile(true)} className="mt-2 text-lime-400 text-sm font-bold hover:underline">+ Crea nuovo giocatore</button></div></Card>
+          <Card>
+            <h2 className="text-xl font-bold mb-4 flex items-center justify-center gap-2"><LogIn size={20} className="text-lime-400" /> Scegli il tuo profilo</h2>
+            <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2">
+              {players.map(p => (
+                <button key={p.id} onClick={() => handleLoginClick(p)} className="bg-slate-700 hover:bg-slate-600 p-3 rounded-xl flex items-center justify-between gap-3 transition-all text-left border border-slate-600 hover:border-lime-400 group">
+                  <div className="flex items-center gap-3"><PlayerAvatar player={p} size="sm" /><span className="font-bold">{p.name}</span></div>
+                  {p.password ? <Lock size={14} className="text-lime-400 opacity-50 group-hover:opacity-100" /> : <Unlock size={14} className="text-slate-500 opacity-30" />}
+                </button>
+              ))} 
+            </div>
+            <div className="border-t border-slate-700 mt-4 pt-4">
+              <button onClick={() => setIsEditingProfile(true)} className="w-full py-3 bg-slate-800 border border-slate-600 border-dashed rounded-xl text-slate-400 font-bold hover:text-white hover:border-white transition-all flex items-center justify-center gap-2">
+                <PlusCircle size={18} /> Crea Nuovo Giocatore
+              </button>
+            </div>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // 5. CREAZIONE NUOVO PROFILO
+  // 4. CREAZIONE NUOVO PROFILO
   if (isEditingProfile) {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center">
@@ -598,19 +689,21 @@ export default function App() {
           <h2 className="text-2xl font-bold mb-4">Nuovo Giocatore</h2>
           <div className="flex flex-col items-center gap-4 mb-4"><div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 overflow-hidden relative group cursor-pointer" onClick={() => profilePhotoInputRef.current.click()}>{newPlayerPhoto ? (<img src={newPlayerPhoto} alt="Preview" className="w-full h-full object-cover" />) : (<Camera size={30} className="text-slate-500 group-hover:text-lime-400" />)}</div><input type="file" ref={profilePhotoInputRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoSelect(e, setNewPlayerPhoto)} /></div>
           <Input label="Nome" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Es. Il Cannibale" />
+          <Input label="Password (per entrare)" type="password" value={profilePassword} onChange={(e) => setProfilePassword(e.target.value)} placeholder="Scegli una password..." />
           <div className="flex gap-3"><Button onClick={() => setIsEditingProfile(false)} variant="secondary" className="flex-1">Annulla</Button><Button onClick={handleCreateProfile} className="flex-1">Crea Profilo</Button></div>
         </Card>
       </div>
     );
   }
 
-  const completedMatchesCount = matches.filter(m => m.score).length;
+  const completedMatchesCount = matches.filter(m => m.score && m.type !== 'tiebreak').length;
   const scheduledMatchesCount = matches.filter(m => !m.score).length;
 
   // 6. MAIN DASHBOARD
   return (
     <div className="min-h-screen bg-slate-950 text-white pb-24 font-sans selection:bg-lime-400 selection:text-black relative">
       
+      {/* MODALI CANCELLAZIONE */}
       {matchToDelete && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
@@ -672,8 +765,27 @@ export default function App() {
               <h3 className="text-lg font-bold mb-3 flex items-center gap-2"><TrendingUp size={20} className="text-lime-400" /> Ultime Attività</h3>
               {matches.filter(m=>m.score).length === 0 ? (<div className="text-center py-10 opacity-50"><p>Nessuna partita terminata.</p></div>) : (
                 <div className="space-y-3">{matches.filter(m=>m.score).slice(0, 3).map(m => {
-                    const { winner, t1Points, t2Points } = calculatePoints(m.score);
-                    return (<Card key={m.id} onClick={() => openMatchModal(m)} className="relative overflow-hidden group cursor-pointer hover:bg-slate-800/80 active:scale-[0.98] transition-all"><div className="absolute top-0 left-0 w-1 h-full bg-lime-400" /><div className="flex justify-between items-center mb-2"><span className="text-xs text-slate-500 font-mono">{new Date(m.date).toLocaleDateString()}</span><span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300">{String(m.score)}</span></div><div className="grid grid-cols-2 gap-4 text-sm"><div className={`flex justify-between font-medium ${winner==='team1'||winner==='draw'?'text-lime-400 font-bold':'text-white'}`}><span>{players.find(p=>p.id===m.team1[0])?.name || '?'} & {players.find(p=>p.id===m.team1[1])?.name || '?'}</span><span className="text-xs opacity-70 ml-2">+{t1Points.toFixed(1)}</span></div><div className={`flex justify-end gap-2 font-medium ${winner==='team2'||winner==='draw'?'text-lime-400 font-bold':'text-white'}`}><span className="text-xs opacity-70">+{t2Points.toFixed(1)}</span><span>{players.find(p=>p.id===m.team2[0])?.name || '?'} & {players.find(p=>p.id===m.team2[1])?.name || '?'}</span></div></div></Card>);
+                    let points1 = 0, points2 = 0;
+                    if(m.type === 'tiebreak') {
+                        if(m.winner === 'team1') { points1 = 2; points2 = 0; }
+                        else { points1 = 0; points2 = 2; }
+                    } else {
+                        const pts = calculatePoints(m.score);
+                        points1 = pts.t1Points;
+                        points2 = pts.t2Points;
+                    }
+                    return (
+                    <Card key={m.id} onClick={() => openMatchModal(m)} className={`relative overflow-hidden group cursor-pointer hover:bg-slate-800/80 active:scale-[0.98] transition-all ${m.type === 'tiebreak' ? 'border-orange-500/30' : ''}`}>
+                        <div className={`absolute top-0 left-0 w-1 h-full ${m.type === 'tiebreak' ? 'bg-orange-500' : 'bg-lime-400'}`} />
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs text-slate-500 font-mono">{new Date(m.date).toLocaleDateString()}</span>
+                            {m.type === 'tiebreak' ? <span className="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1"><Zap size={10}/> Tie-Break</span> : <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300">{String(m.score)}</span>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className={`flex justify-between font-medium ${m.winner==='team1'||m.winner==='draw'?'text-lime-400 font-bold':'text-white'}`}><span>{players.find(p=>p.id===m.team1[0])?.name || '?'} & {players.find(p=>p.id===m.team1[1])?.name || '?'}</span><span className="text-xs opacity-70 ml-2">+{points1.toFixed(1)}</span></div>
+                            <div className={`flex justify-end gap-2 font-medium ${m.winner==='team2'||m.winner==='draw'?'text-lime-400 font-bold':'text-white'}`}><span className="text-xs opacity-70">+{points2.toFixed(1)}</span><span>{players.find(p=>p.id===m.team2[0])?.name || '?'} & {players.find(p=>p.id===m.team2[1])?.name || '?'}</span></div>
+                        </div>
+                    </Card>);
                   })}</div>
               )}
             </div>
@@ -683,15 +795,13 @@ export default function App() {
         )}
 
         {/* TOURNAMENT VIEW */}
-        {activeTab === 'tournament' && !isAddingMatch && (
+        {activeTab === 'tournament' && !isAddingMatch && !isAddingTieBreak && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold flex items-center gap-2"><Swords className="text-lime-400" /> Torneo</h2>
-              {/* Reset button always visible if matches exist */}
               {matches.length > 0 && (<button onClick={() => { if(window.confirm("Attenzione: Questo cancellerà TUTTE le partite. Continuare?")) matches.forEach(m => deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'matches', m.id))); }} className="text-xs text-red-400 underline hover:text-red-300">Reset Tutto</button>)}
             </div>
 
-            {/* Generator Card - Visible if empty OR matches < 6 */}
             {matches.length === 0 && (
               <Card className="text-center py-8">
                  <Swords size={48} className="mx-auto text-slate-600 mb-4" />
@@ -705,8 +815,8 @@ export default function App() {
             )}
 
             <div className="space-y-4">
-              {matches.map((m, idx) => {
-                if(!m || !m.team1 || !m.team2) return null; // Safety check
+              {matches.filter(m => m.type !== 'tiebreak').map((m, idx) => {
+                if(!m || !m.team1 || !m.team2) return null; 
                 const isPlayed = !!m.score;
                 const dateDisplay = new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
                 const { winner, t1Points, t2Points } = calculatePoints(m.score);
@@ -725,7 +835,71 @@ export default function App() {
                 );
               })}
             </div>
+
+            {/* SEZIONE TIE BREAK DEDICATA */}
+            <div className="pt-4 border-t border-slate-800">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-orange-400 flex items-center gap-2"><Zap size={20}/> Extra: Tie-Break</h3>
+                    <button onClick={() => setIsAddingTieBreak(true)} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-xs font-bold hover:bg-orange-500 hover:text-white transition-all">+ Aggiungi</button>
+                </div>
+                <div className="space-y-2">
+                    {matches.filter(m => m.type === 'tiebreak').length === 0 && <div className="text-xs text-slate-500 text-center py-2">Nessun tie-break giocato.</div>}
+                    {matches.filter(m => m.type === 'tiebreak').map(m => (
+                        <div key={m.id} className="relative group">
+                            <button onClick={(e) => askDeleteConfirmation(e, m.id)} className="absolute top-2 right-2 z-20 p-1.5 bg-slate-900/80 hover:bg-red-500 text-slate-400 hover:text-white rounded-lg shadow-sm border border-slate-700 transition-all" title="Elimina"><Trash2 size={14}/></button>
+                            <Card className="border-l-4 border-l-orange-500 bg-slate-900/50">
+                                <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
+                                    <span>{new Date(m.date).toLocaleDateString()}</span>
+                                    <span className="font-bold text-orange-400">+2 Punti</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className={`flex-1 text-center p-2 rounded ${m.winner === 'team1' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'text-slate-400'}`}>
+                                        <div className="text-xs">{players.find(p=>p.id===m.team1[0])?.name}</div>
+                                        <div className="text-xs">{players.find(p=>p.id===m.team1[1])?.name}</div>
+                                    </div>
+                                    <div className="font-black text-slate-600 text-xs">VS</div>
+                                    <div className={`flex-1 text-center p-2 rounded ${m.winner === 'team2' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'text-slate-400'}`}>
+                                        <div className="text-xs">{players.find(p=>p.id===m.team2[0])?.name}</div>
+                                        <div className="text-xs">{players.find(p=>p.id===m.team2[1])?.name}</div>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                    ))}
+                </div>
+            </div>
           </div>
+        )}
+
+        {isAddingTieBreak && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 fixed inset-0 z-[60] bg-slate-950 flex flex-col p-4 overflow-y-auto">
+            <div className="flex items-center justify-between mb-6"><h2 className="text-2xl font-bold flex items-center gap-2"><Zap className="text-orange-400"/> Registra Tie-Break</h2><button onClick={() => setIsAddingTieBreak(false)} className="text-slate-400 p-2">Annulla</button></div>
+            <div className="space-y-6 flex-1">
+                <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/30 text-orange-200 text-sm text-center">
+                    <p>Il Tie-Break ai 10 punti assegna <strong>2 punti</strong> secchi alla coppia vincitrice.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 rounded-2xl border bg-slate-900 border-slate-700">
+                        <label className="text-slate-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team A</label>
+                        <div className="space-y-3">
+                            {[1, 2].map(num => (<select key={num} className="bg-slate-800 text-white p-3 rounded-xl text-sm border border-slate-600 w-full" value={newMatchData[`team1p${num}`]} onChange={e => setNewMatchData({...newMatchData, [`team1p${num}`]: e.target.value})}><option value="">Giocatore {num}</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>))}
+                        </div>
+                        <Button onClick={() => handleSaveTieBreak('team1')} className="w-full mt-4 bg-slate-700 hover:bg-orange-500 hover:text-white border border-slate-600">🏆 Vince A</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-center font-black text-slate-700">VS</div>
+
+                    <div className="p-4 rounded-2xl border bg-slate-900 border-slate-700">
+                        <label className="text-slate-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team B</label>
+                        <div className="space-y-3">
+                            {[1, 2].map(num => (<select key={num} className="bg-slate-800 text-white p-3 rounded-xl text-sm border border-slate-600 w-full" value={newMatchData[`team2p${num}`]} onChange={e => setNewMatchData({...newMatchData, [`team2p${num}`]: e.target.value})}><option value="">Giocatore {num}</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>))}
+                        </div>
+                        <Button onClick={() => handleSaveTieBreak('team2')} className="w-full mt-4 bg-slate-700 hover:bg-orange-500 hover:text-white border border-slate-600">🏆 Vince B</Button>
+                    </div>
+                </div>
+            </div>
+            </div>
         )}
 
         {isAddingMatch && (
@@ -759,6 +933,8 @@ export default function App() {
             <Card className="border-l-4 border-l-yellow-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Combattuta (2-1)</h3><div className="bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded text-xs font-bold">Battle</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-yellow-400"/><span><strong>6 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Check size={14} className="text-slate-400"/><span><strong>3 Punti</strong> a testa per i perdenti.</span></li></ul></Card>
             <Card className="border-l-4 border-l-slate-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Pareggio (1-1)</h3><div className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-bold">Draw</div></div><p className="text-sm text-slate-400 mb-2">Se la partita finisce un set pari, viene considerata pareggio.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Calculator size={14} className="text-blue-400"/><span><strong>0.3 Punti</strong> per ogni game vinto a tutti i giocatori.</span></li></ul></Card>
             
+            <Card className="border-l-4 border-l-orange-500 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Tie-Break (10 punti)</h3><div className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-xs font-bold">Extra</div></div><p className="text-sm text-slate-400 mb-2">Se avanza tempo e si gioca un tie-break ai 10.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Zap size={14} className="text-orange-400"/><span><strong>2 Punti</strong> secchi ai vincitori.</span></li></ul></Card>
+
             <Card className="border-l-4 border-l-red-400 bg-slate-900/80">
                 <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-white text-lg">Regola Aurea</h3>

@@ -610,13 +610,13 @@ export default function App() {
       if (winner === 'team1') { 
           team1.forEach(pid => { 
               if(stats[pid]) {
-                  stats[pid].wins++; 
+                  if (m.type !== 'tiebreak') stats[pid].wins++; // NON contare win se tiebreak
                   if(m.type === 'tiebreak') stats[pid].tieBreaksWon++;
               }
           }); 
           team2.forEach(pid => { 
               if(stats[pid]) {
-                  stats[pid].losses++; 
+                  if (m.type !== 'tiebreak') stats[pid].losses++; // NON contare loss se tiebreak
                   if(m.type === 'tiebreak') stats[pid].tieBreaksLost++;
               }
           }); 
@@ -624,18 +624,19 @@ export default function App() {
       else if (winner === 'team2') { 
           team2.forEach(pid => { 
               if(stats[pid]) {
-                  stats[pid].wins++; 
+                  if (m.type !== 'tiebreak') stats[pid].wins++; 
                   if(m.type === 'tiebreak') stats[pid].tieBreaksWon++; 
               }
           }); 
           team1.forEach(pid => { 
               if(stats[pid]) {
-                  stats[pid].losses++; 
+                  if (m.type !== 'tiebreak') stats[pid].losses++;
                   if(m.type === 'tiebreak') stats[pid].tieBreaksLost++;
               }
           }); 
       }
       else { 
+          // I pareggi non esistono nei tie-break
           team1.forEach(pid => { if(stats[pid]) stats[pid].draws++; }); 
           team2.forEach(pid => { if(stats[pid]) stats[pid].draws++; }); 
       }
@@ -871,8 +872,8 @@ export default function App() {
         )}
 
         {/* TOURNAMENT VIEW - CORRETTA */}
-        {activeTab === 'tournament' && !isAddingMatch && (
-          <div className="space-y-6 relative">
+        {activeTab === 'tournament' && !isAddingMatch && !isAddingTieBreak && (
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold flex items-center gap-2"><Swords className="text-lime-400" /> Torneo</h2>
               {matches.length > 0 && (<button onClick={() => { if(window.confirm("Attenzione: Questo cancellerà TUTTE le partite. Continuare?")) matches.forEach(m => deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'matches', m.id))); }} className="text-xs text-red-400 underline hover:text-red-300">Reset Tutto</button>)}

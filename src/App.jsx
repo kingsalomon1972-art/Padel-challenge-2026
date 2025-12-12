@@ -46,7 +46,7 @@ import {
   Lock, 
   Unlock, 
   LogIn,
-  Zap // Icona per il Tie-Break
+  Zap 
 } from 'lucide-react';
 
 // --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
@@ -244,7 +244,6 @@ const ProgressChart = ({ players, matches }) => {
   sortedMatches.forEach(m => {
     let t1P = 0, t2P = 0;
     
-    // GESTIONE PUNTI (Match vs TieBreak)
     if (m.type === 'tiebreak') {
       if (m.winner === 'team1') { t1P = 2; t2P = 0; }
       else { t1P = 0; t2P = 2; }
@@ -327,7 +326,7 @@ export default function App() {
   
   const [isEditingProfile, setIsEditingProfile] = useState(false); 
   const [isAddingMatch, setIsAddingMatch] = useState(false);
-  const [isAddingTieBreak, setIsAddingTieBreak] = useState(false); // NUOVO STATO TIE BREAK
+  const [isAddingTieBreak, setIsAddingTieBreak] = useState(false); 
   const [editingMatchId, setEditingMatchId] = useState(null); 
   const [matchToDelete, setMatchToDelete] = useState(null); 
   const [playerToDelete, setPlayerToDelete] = useState(null);
@@ -531,20 +530,20 @@ export default function App() {
     closeMatchModal();
   };
 
-  // NUOVA FUNZIONE PER SALVARE TIE BREAK
   const handleSaveTieBreak = async (winnerTeam) => {
-    const { team1p1, team1p2, team2p1, team2p2, date } = newMatchData;
+    const { team1p1, team1p2, team2p1, team2p2, date, score } = newMatchData;
     if (!team1p1 || !team1p2 || !team2p1 || !team2p2) return;
+    if (!score) { alert("Inserisci il punteggio!"); return; } 
     
     const matchData = { 
-        score: '10-X', // Placeholder per indicare tiebreak
+        score: score, 
         date: date || new Date().toISOString().split('T')[0], 
         team1: [team1p1, team1p2], 
         team2: [team2p1, team2p2], 
         recordedBy: currentPlayer?.name || 'Anonimo', 
         winner: winnerTeam, 
         status: 'completed',
-        type: 'tiebreak' // MARCATORE SPECIALE
+        type: 'tiebreak' 
     };
     
     await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'matches'), { ...matchData, createdAt: serverTimestamp() });
@@ -577,7 +576,6 @@ export default function App() {
       
       let t1Points = 0, t2Points = 0, t1Games = 0, t2Games = 0, winner = 'draw';
 
-      // CALCOLO PUNTI DIVERSO SE E' UN TIE BREAK
       if (m.type === 'tiebreak') {
           winner = m.winner;
           if (winner === 'team1') { t1Points = 2; t2Points = 0; }
@@ -850,7 +848,7 @@ export default function App() {
                             <Card className="border-l-4 border-l-orange-500 bg-slate-900/50">
                                 <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
                                     <span>{new Date(m.date).toLocaleDateString()}</span>
-                                    <span className="font-bold text-orange-400">+2 Punti</span>
+                                    <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded">{m.score}</span>
                                 </div>
                                 <div className="flex items-center justify-between gap-2">
                                     <div className={`flex-1 text-center p-2 rounded ${m.winner === 'team1' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'text-slate-400'}`}>
@@ -880,6 +878,16 @@ export default function App() {
                 </div>
                 
                 <div className="grid grid-cols-1 gap-4">
+                    {/* INPUT PUNTEGGIO */}
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                        <Input 
+                            label="Risultato (es. 10-8)" 
+                            value={newMatchData.score} 
+                            onChange={e => setNewMatchData({...newMatchData, score: e.target.value})} 
+                            placeholder="10-8" 
+                        />
+                    </div>
+
                     <div className="p-4 rounded-2xl border bg-slate-900 border-slate-700">
                         <label className="text-slate-400 font-bold text-sm mb-3 block uppercase tracking-wider text-center">Team A</label>
                         <div className="space-y-3">
@@ -919,7 +927,7 @@ export default function App() {
         {/* VIEW: RANKING & OTHERS */}
         {activeTab === 'ranking' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center"><h2 className="text-2xl font-bold flex items-center gap-2"><Trophy className="text-yellow-400" /> Classifica</h2><button onClick={() => setShowChart(!showChart)} className="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700 transition-all">{showChart ? <LayoutDashboard size={20}/> : <LineChart size={20}/>}</button></div>
+            <div className="flex justify-between items-center"><h2 className="text-2xl font-bold flex items-center gap-2"><Trophy className="text-yellow-400" /> Classifica</h2><button onClick={() => setShowChart(!showChart)} className="bg-lime-400 text-slate-900 p-2.5 rounded-xl hover:bg-lime-300 shadow-lg shadow-lime-900/20 transition-all active:scale-95">{showChart ? <LayoutDashboard size={20}/> : <LineChart size={20}/>}</button></div>
             {showChart ? (<ProgressChart players={players} matches={matches} />) : (ranking.map((p, idx) => (<div key={p.id} className="flex flex-col bg-slate-800 p-4 rounded-xl border border-slate-700 gap-3 animate-in slide-in-from-bottom-2 duration-300"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className={`w-8 h-8 flex items-center justify-center font-bold rounded-full ${idx === 0 ? 'bg-yellow-400 text-black' : idx === 1 ? 'bg-slate-400 text-black' : idx === 2 ? 'bg-orange-700 text-white' : 'bg-slate-700 text-slate-400'}`}>{idx + 1}</div><div className="flex items-center gap-3"><PlayerAvatar player={p} size="md" /><span className="font-bold text-xl">{p.name}</span></div></div><div className="text-right"><div className="text-3xl font-black text-lime-400">{p.points % 1 !== 0 ? p.points.toFixed(1) : p.points}</div><div className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Punti Totali</div></div></div><div className="grid grid-cols-5 gap-1 pt-2 border-t border-slate-700"><div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Vinte</div><div className="text-sm font-bold text-white">{p.wins}</div></div><div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Pari</div><div className="text-sm font-bold text-slate-300">{p.draws}</div></div><div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Perse</div><div className="text-sm font-bold text-slate-400">{p.losses}</div></div><div className="bg-lime-900/10 border border-lime-500/20 rounded-lg p-2 text-center"><div className="text-[10px] text-lime-500/70 uppercase font-bold">Games V</div><div className="text-sm font-bold text-lime-400">{p.gamesWon}</div></div><div className="bg-red-900/10 border border-red-500/20 rounded-lg p-2 text-center"><div className="text-[10px] text-red-500/70 uppercase font-bold">Games P</div><div className="text-sm font-bold text-red-400">{p.gamesLost}</div></div></div></div>)))}
           </div>
         )}

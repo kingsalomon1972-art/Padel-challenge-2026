@@ -46,7 +46,8 @@ import {
   Lock, 
   Unlock, 
   LogIn,
-  Zap 
+  Zap,
+  AlertCircle // Icona per i mancanti
 } from 'lucide-react';
 
 // --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
@@ -100,6 +101,17 @@ const compressImage = (file) => {
       };
     };
   });
+};
+
+// --- HELPER DATE ---
+const getDaysInMonth = (year, month) => {
+  const date = new Date(year, month, 1);
+  const days = [];
+  while (date.getMonth() === month) {
+    days.push(new Date(date).toISOString().split('T')[0]);
+    date.setDate(date.getDate() + 1);
+  }
+  return days;
 };
 
 // --- HELPER CALCOLO PUNTI ---
@@ -324,6 +336,9 @@ export default function App() {
   const [availabilities, setAvailabilities] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(null);
   
+  // STATO CALENDARIO
+  const [calendarView, setCalendarView] = useState('current'); // 'current' | 'next'
+
   const [isEditingProfile, setIsEditingProfile] = useState(false); 
   const [isAddingMatch, setIsAddingMatch] = useState(false);
   const [isAddingTieBreak, setIsAddingTieBreak] = useState(false); 
@@ -647,11 +662,50 @@ export default function App() {
     return Object.values(stats).sort((a, b) => b.points - a.points);
   }, [players, matches]);
 
+  // DATE DINAMICHE PER IL CALENDARIO
   const calendarDates = useMemo(() => {
-    const dates = [];
-    for (let i = 0; i < 14; i++) { const d = new Date(); d.setDate(d.getDate() + i); dates.push(d.toISOString().split('T')[0]); }
-    return dates;
-  }, []);
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0 = Gen, 11 = Dic
+
+    if (calendarView === 'current') {
+      const days = getDaysInMonth(currentYear, currentMonth);
+      // Filtra per mostrare solo da oggi in poi se è il mese corrente, oppure tutti se preferisci
+      // Per semplicità mostriamo tutti i giorni del mese, o da oggi in poi.
+      // Mostriamo da OGGI alla fine del mese
+      return days.filter(d => d >= today.toISOString().split('T')[0]);
+    } else {
+      // Mese successivo
+      let nextMonth = currentMonth + 1;
+      let year = currentYear;
+      if (nextMonth > 11) { nextMonth = 0; year++; }
+      return getDaysInMonth(year, nextMonth);
+    }
+  }, [calendarView]);
+
+  const monthLabel = useMemo(() => {
+    const today = new Date();
+    const date = new Date();
+    if (calendarView === 'next') {
+        date.setMonth(today.getMonth() + 1);
+    }
+    return date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  }, [calendarView]);
+
+  // CALCOLO GIOCATORI MANCANTI (PIGRONI)
+  const missingPlayers = useMemo(() => {
+      const activeDates = calendarDates;
+      // Trova chi ha almeno una disponibilità in questo set di date
+      const availablePlayerIds = new Set();
+      availabilities.forEach(a => {
+          if (activeDates.includes(a.date)) {
+              availablePlayerIds.add(a.playerId);
+          }
+      });
+      // Filtra i giocatori che NON sono nel set
+      return players.filter(p => !availablePlayerIds.has(p.id));
+  }, [players, availabilities, calendarDates]);
+
 
   // --- RENDER START ---
 
@@ -1030,7 +1084,27 @@ export default function App() {
         </div>
         )}
 
-        {activeTab === 'calendar' && (<div className="space-y-4"><h2 className="text-2xl font-bold flex items-center gap-2"><Calendar className="text-lime-400" /> Disponibilità</h2><div className="grid grid-cols-1 gap-3">{calendarDates.map(date => { const dayAvail = availabilities.filter(a => a.date === date); const amIAvailable = dayAvail.some(a => a.playerId === currentPlayer.id); const isMatch = dayAvail.length >= 4; const dObj = new Date(date); const dayName = dObj.toLocaleDateString('it-IT', { weekday: 'long' }); const dayNum = dObj.getDate(); const month = dObj.toLocaleDateString('it-IT', { month: 'short' }); return (<button key={date} onClick={() => toggleAvailability(date)} className={`relative w-full p-4 rounded-xl border transition-all flex items-center gap-4 ${amIAvailable ? 'bg-slate-800 border-lime-400/50' : 'bg-slate-900 border-slate-800 opacity-80'} ${isMatch ? 'ring-2 ring-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : ''}`}><div className="flex flex-col items-center justify-center w-12 h-12 bg-slate-950 rounded-lg border border-slate-700"><span className="text-xs text-slate-500 uppercase">{month}</span><span className="text-xl font-bold text-white">{dayNum}</span></div><div className="flex-1 text-left"><div className="flex items-center gap-2"><span className="capitalize font-bold text-white">{dayName}</span>{isMatch && <span className="bg-lime-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">Si Gioca!</span>}</div><div className="flex -space-x-2 mt-2">{dayAvail.map((a, i) => (<div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-800 flex items-center justify-center text-[10px] text-white">{(a.playerName || '?').charAt(0)}</div>))}</div></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${amIAvailable ? 'border-lime-400 bg-lime-400 text-slate-900' : 'border-slate-600'}`}>{amIAvailable && <Activity size={14} />}</div></button>); })}</div></div>)}
+        {activeTab === 'calendar' && (<div className="space-y-4"><div className="flex gap-2 mb-4"><button onClick={() => setCalendarView('current')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${calendarView === 'current' ? 'bg-lime-400 text-slate-900 shadow-lg' : 'bg-slate-800 text-slate-400'}`}>Mese Corrente</button><button onClick={() => setCalendarView('next')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${calendarView === 'next' ? 'bg-lime-400 text-slate-900 shadow-lg' : 'bg-slate-800 text-slate-400'}`}>Mese Prossimo</button></div>
+        
+        {/* LISTA PIGRONI */}
+        {missingPlayers.length > 0 && (
+            <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-xl mb-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="text-orange-400" size={18} />
+                    <span className="text-orange-400 font-bold text-sm uppercase tracking-wider">Mancano all'appello ({monthLabel})</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {missingPlayers.map(p => (
+                        <div key={p.id} className="flex items-center gap-1 bg-slate-900 border border-slate-700 px-2 py-1 rounded-full">
+                            <PlayerAvatar player={p} size="sm" className="w-5 h-5 text-[10px]" />
+                            <span className="text-xs text-slate-300">{p.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        <h2 className="text-2xl font-bold flex items-center gap-2 capitalize"><Calendar className="text-lime-400" /> {monthLabel}</h2><div className="grid grid-cols-1 gap-3">{calendarDates.map(date => { const dayAvail = availabilities.filter(a => a.date === date); const amIAvailable = dayAvail.some(a => a.playerId === currentPlayer.id); const isMatch = dayAvail.length >= 4; const dObj = new Date(date); const dayName = dObj.toLocaleDateString('it-IT', { weekday: 'long' }); const dayNum = dObj.getDate(); const month = dObj.toLocaleDateString('it-IT', { month: 'short' }); return (<button key={date} onClick={() => toggleAvailability(date)} className={`relative w-full p-4 rounded-xl border transition-all flex items-center gap-4 ${amIAvailable ? 'bg-slate-800 border-lime-400/50' : 'bg-slate-900 border-slate-800 opacity-80'} ${isMatch ? 'ring-2 ring-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : ''}`}><div className="flex flex-col items-center justify-center w-12 h-12 bg-slate-950 rounded-lg border border-slate-700"><span className="text-xs text-slate-500 uppercase">{month}</span><span className="text-xl font-bold text-white">{dayNum}</span></div><div className="flex-1 text-left"><div className="flex items-center gap-2"><span className="capitalize font-bold text-white">{dayName}</span>{isMatch && <span className="bg-lime-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">SI GIOCA!</span>}</div><div className="flex -space-x-2 mt-2">{dayAvail.map((a, i) => (<div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-800 flex items-center justify-center text-[10px] text-white">{(a.playerName || '?').charAt(0)}</div>))}</div></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${amIAvailable ? 'border-lime-400 bg-lime-400 text-slate-900' : 'border-slate-600'}`}>{amIAvailable && <Activity size={14} />}</div></button>); })}</div></div>)}
         {activeTab === 'players' && (<div className="space-y-6"><h2 className="text-2xl font-bold flex items-center gap-2"><Users className="text-lime-400" /> Gestione Giocatori</h2><Card><h3 className="text-sm font-bold text-slate-400 uppercase mb-3">Aggiungi Nuovo</h3><div className="flex flex-col gap-3"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 overflow-hidden relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>{newPlayerPhoto ? (<img src={newPlayerPhoto} alt="Preview" className="w-full h-full object-cover" />) : (<Camera size={20} className="text-slate-500 group-hover:text-lime-400" />)}</div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoSelect(e, setNewPlayerPhoto)} /><div className="flex-1"><input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nome giocatore..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-lime-400" /></div><Button onClick={handleAddPlayerGeneric} className="w-12 !px-0 flex items-center justify-center"><PlusCircle size={20} /></Button></div></div></Card><div className="space-y-2"><h3 className="text-sm font-bold text-slate-400 uppercase ml-1">Lista Completa ({players.length})</h3>{players.map(p => (<div key={p.id} className="flex items-center justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 group"><div className="flex items-center gap-3"><PlayerAvatar player={p} size="md" /><div><div className="font-bold text-white">{p.name}</div>{p.id === currentPlayer?.id && <span className="text-[10px] bg-lime-400/20 text-lime-400 px-2 py-0.5 rounded">Tu</span>}</div></div><div className="flex gap-1"><button onClick={() => handleEditPlayerClick(p)} className="p-2 text-slate-500 hover:text-lime-400 hover:bg-lime-900/10 rounded-lg transition-colors"><Pencil size={18} /></button><button onClick={() => handleDeletePlayerClick(p.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={18} /></button></div></div>))}</div></div>)}
       </main>
 

@@ -871,8 +871,8 @@ export default function App() {
         )}
 
         {/* TOURNAMENT VIEW - CORRETTA */}
-        {activeTab === 'tournament' && !isAddingMatch && !isAddingTieBreak && (
-          <div className="space-y-6">
+        {activeTab === 'tournament' && !isAddingMatch && (
+          <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold flex items-center gap-2"><Swords className="text-lime-400" /> Torneo</h2>
               {matches.length > 0 && (<button onClick={() => { if(window.confirm("Attenzione: Questo cancellerà TUTTE le partite. Continuare?")) matches.forEach(m => deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'matches', m.id))); }} className="text-xs text-red-400 underline hover:text-red-300">Reset Tutto</button>)}
@@ -1001,3 +1001,80 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* VIEW: RANKING & OTHERS */}
+        {activeTab === 'ranking' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center"><h2 className="text-2xl font-bold flex items-center gap-2"><Trophy className="text-yellow-400" /> Classifica</h2><button onClick={() => setShowChart(!showChart)} className="bg-lime-400 text-slate-900 p-2.5 rounded-xl hover:bg-lime-300 shadow-lg shadow-lime-900/20 transition-all active:scale-95">{showChart ? <LayoutDashboard size={20}/> : <LineChart size={20}/>}</button></div>
+            {showChart ? (<ProgressChart players={players} matches={matches} />) : (ranking.map((p, idx) => (
+                <div key={p.id} className="flex flex-col bg-slate-800 p-4 rounded-xl border border-slate-700 gap-3 animate-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-8 h-8 flex items-center justify-center font-bold rounded-full ${idx === 0 ? 'bg-yellow-400 text-black' : idx === 1 ? 'bg-slate-400 text-black' : idx === 2 ? 'bg-orange-700 text-white' : 'bg-slate-700 text-slate-400'}`}>{idx + 1}</div>
+                            <div className="flex items-center gap-3"><PlayerAvatar player={p} size="md" /><span className="font-bold text-xl">{p.name}</span></div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-3xl font-black text-lime-400">{p.points % 1 !== 0 ? p.points.toFixed(1) : p.points}</div>
+                            <div className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Punti Totali</div>
+                        </div>
+                    </div>
+                    
+                    {/* STATISTICHE AGGIORNATE A DUE RIGHE */}
+                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-700">
+                        <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Vinte</div><div className="text-sm font-bold text-white">{p.wins}</div></div>
+                        <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Pari</div><div className="text-sm font-bold text-slate-300">{p.draws}</div></div>
+                        <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Perse</div><div className="text-sm font-bold text-slate-400">{p.losses}</div></div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                        <div className="bg-lime-900/10 border border-lime-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-lime-500/70 uppercase font-bold">Game V</div><div className="text-sm font-bold text-lime-400">{p.gamesWon}</div></div>
+                        <div className="bg-red-900/10 border border-red-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-red-500/70 uppercase font-bold">Game P</div><div className="text-sm font-bold text-red-400">{p.gamesLost}</div></div>
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-orange-500/70 uppercase font-bold">TB Vinti</div><div className="text-sm font-bold text-orange-400">{p.tieBreaksWon}</div></div>
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2 text-center"><div className="text-[9px] text-orange-500/70 uppercase font-bold">TB Persi</div><div className="text-sm font-bold text-red-400 opacity-70">{p.tieBreaksLost}</div></div>
+                    </div>
+                </div>
+            )))}
+          </div>
+        )}
+
+        {/* RULES, CALENDAR, PLAYERS */}
+        {activeTab === 'rules' && (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="text-lime-400" /> Regolamento</h2>
+            <div className="space-y-4">
+            <Card className="border-l-4 border-l-lime-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Netta (2-0)</h3><div className="bg-lime-400/20 text-lime-400 px-2 py-1 rounded text-xs font-bold">Best Scenar</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-lime-400"/><span><strong>8 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Minus size={14} className="text-slate-500"/><span><strong>0.2 Punti</strong> per ogni game vinto ai perdenti.</span></li></ul></Card>
+            <Card className="border-l-4 border-l-yellow-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Vittoria Combattuta (2-1)</h3><div className="bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded text-xs font-bold">Battle</div></div><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Check size={14} className="text-yellow-400"/><span><strong>6 Punti</strong> a testa per i vincitori.</span></li><li className="flex items-center gap-2"><Check size={14} className="text-slate-400"/><span><strong>3 Punti</strong> a testa per i perdenti.</span></li></ul></Card>
+            <Card className="border-l-4 border-l-slate-400 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Pareggio (1-1)</h3><div className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-bold">Draw</div></div><p className="text-sm text-slate-400 mb-2">Se la partita finisce un set pari, viene considerata pareggio.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Calculator size={14} className="text-blue-400"/><span><strong>0.3 Punti</strong> per ogni game vinto a tutti i giocatori.</span></li></ul></Card>
+            
+            <Card className="border-l-4 border-l-orange-500 bg-slate-900/80"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-white text-lg">Tie-Break (10 punti)</h3><div className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-xs font-bold">Extra</div></div><p className="text-sm text-slate-400 mb-2">Se avanza tempo e si gioca un tie-break ai 10.</p><ul className="space-y-2 text-sm text-slate-300"><li className="flex items-center gap-2"><Zap size={14} className="text-orange-400"/><span><strong>2 Punti</strong> secchi ai vincitori.</span></li></ul></Card>
+
+            <Card className="border-l-4 border-l-red-400 bg-slate-900/80">
+                <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-white text-lg">Regola Aurea</h3>
+                <div className="bg-red-400/20 text-red-400 px-2 py-1 rounded text-xs font-bold">Importante</div>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-300">
+                <li className="flex items-center gap-2">
+                    <Pizza size={14} className="text-red-400"/>
+                    <span><strong>Chi perde paga la pizza.</strong> Chi vince gode e mangia.</span>
+                </li>
+                </ul>
+            </Card>
+            </div>
+        </div>
+        )}
+
+        {activeTab === 'calendar' && (<div className="space-y-4"><h2 className="text-2xl font-bold flex items-center gap-2"><Calendar className="text-lime-400" /> Disponibilità</h2><div className="grid grid-cols-1 gap-3">{calendarDates.map(date => { const dayAvail = availabilities.filter(a => a.date === date); const amIAvailable = dayAvail.some(a => a.playerId === currentPlayer.id); const isMatch = dayAvail.length >= 4; const dObj = new Date(date); const dayName = dObj.toLocaleDateString('it-IT', { weekday: 'long' }); const dayNum = dObj.getDate(); const month = dObj.toLocaleDateString('it-IT', { month: 'short' }); return (<button key={date} onClick={() => toggleAvailability(date)} className={`relative w-full p-4 rounded-xl border transition-all flex items-center gap-4 ${amIAvailable ? 'bg-slate-800 border-lime-400/50' : 'bg-slate-900 border-slate-800 opacity-80'} ${isMatch ? 'ring-2 ring-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : ''}`}><div className="flex flex-col items-center justify-center w-12 h-12 bg-slate-950 rounded-lg border border-slate-700"><span className="text-xs text-slate-500 uppercase">{month}</span><span className="text-xl font-bold text-white">{dayNum}</span></div><div className="flex-1 text-left"><div className="flex items-center gap-2"><span className="capitalize font-bold text-white">{dayName}</span>{isMatch && <span className="bg-lime-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">Si Gioca!</span>}</div><div className="flex -space-x-2 mt-2">{dayAvail.map((a, i) => (<div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-800 flex items-center justify-center text-[10px] text-white">{(a.playerName || '?').charAt(0)}</div>))}</div></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${amIAvailable ? 'border-lime-400 bg-lime-400 text-slate-900' : 'border-slate-600'}`}>{amIAvailable && <Activity size={14} />}</div></button>); })}</div></div>)}
+        {activeTab === 'players' && (<div className="space-y-6"><h2 className="text-2xl font-bold flex items-center gap-2"><Users className="text-lime-400" /> Gestione Giocatori</h2><Card><h3 className="text-sm font-bold text-slate-400 uppercase mb-3">Aggiungi Nuovo</h3><div className="flex flex-col gap-3"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 overflow-hidden relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>{newPlayerPhoto ? (<img src={newPlayerPhoto} alt="Preview" className="w-full h-full object-cover" />) : (<Camera size={20} className="text-slate-500 group-hover:text-lime-400" />)}</div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoSelect(e, setNewPlayerPhoto)} /><div className="flex-1"><input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nome giocatore..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-lime-400" /></div><Button onClick={handleAddPlayerGeneric} className="w-12 !px-0 flex items-center justify-center"><PlusCircle size={20} /></Button></div></div></Card><div className="space-y-2"><h3 className="text-sm font-bold text-slate-400 uppercase ml-1">Lista Completa ({players.length})</h3>{players.map(p => (<div key={p.id} className="flex items-center justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 group"><div className="flex items-center gap-3"><PlayerAvatar player={p} size="md" /><div><div className="font-bold text-white">{p.name}</div>{p.id === currentPlayer?.id && <span className="text-[10px] bg-lime-400/20 text-lime-400 px-2 py-0.5 rounded">Tu</span>}</div></div><div className="flex gap-1"><button onClick={() => handleEditPlayerClick(p)} className="p-2 text-slate-500 hover:text-lime-400 hover:bg-lime-900/10 rounded-lg transition-colors"><Pencil size={18} /></button><button onClick={() => handleDeletePlayerClick(p.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={18} /></button></div></div>))}</div></div>)}
+      </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 pb-safe px-1 py-3 flex justify-around items-center z-50">
+        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='dashboard'?'text-lime-400':'text-slate-500'}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">Home</span></button>
+        <button onClick={() => setActiveTab('ranking')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='ranking'?'text-lime-400':'text-slate-500'}`}><Trophy size={20} /><span className="text-[9px] font-bold">Classifica</span></button>
+        <button onClick={() => setActiveTab('tournament')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='tournament'?'text-lime-400':'text-slate-500'}`}><Swords size={20} /><span className="text-[9px] font-bold">Torneo</span></button>
+        <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='calendar'?'text-lime-400':'text-slate-500'}`}><Calendar size={20} /><span className="text-[9px] font-bold">Date</span></button>
+        <button onClick={() => setActiveTab('players')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='players'?'text-lime-400':'text-slate-500'}`}><Users size={20} /><span className="text-[9px] font-bold">Players</span></button>
+        <button onClick={() => setActiveTab('rules')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='rules'?'text-lime-400':'text-slate-500'}`}><BookOpen size={20} /><span className="text-[9px] font-bold">Regole</span></button>
+      </nav>
+    </div>
+  );
+}

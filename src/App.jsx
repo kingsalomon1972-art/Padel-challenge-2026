@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -1158,6 +1159,7 @@ export default function App() {
         <button onClick={() => setActiveTab('players')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='players'?'text-lime-400':'text-slate-500'}`}><Users size={20} /><span className="text-[9px] font-bold">Players</span></button>
         <button onClick={() => setActiveTab('rules')} className={`flex flex-col items-center gap-1 w-12 ${activeTab==='rules'?'text-lime-400':'text-slate-500'}`}><BookOpen size={20} /><span className="text-[9px] font-bold">Regole</span></button>
       </nav>
+      <SpeedInsights />
     </div>
   );
 }

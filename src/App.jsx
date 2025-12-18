@@ -48,7 +48,9 @@ import {
   LogIn,
   Zap,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  MessageCircle, // Icona WhatsApp
+  Share2
 } from 'lucide-react';
 
 // --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
@@ -1106,7 +1108,7 @@ export default function App() {
             </div>
         )}
 
-        {/* MATCH CONFERMATI SUMMARY */}
+        {/* MATCH CONFERMATI SUMMARY + WHATSAPP SHARE */}
         {upcomingMatches.length > 0 && (
            <div className="mb-6">
              <h3 className="text-lime-400 font-bold text-sm mb-2 uppercase tracking-wider flex items-center gap-2">
@@ -1115,15 +1117,30 @@ export default function App() {
              <div className="space-y-2">
                {upcomingMatches.map(date => {
                    const confirmedPlayers = availabilities.filter(a => a.date === date).map(a => players.find(p => p.id === a.playerId));
+                   
+                   // Logica WhatsApp Share
+                   const shareOnWhatsApp = (e) => {
+                       e.stopPropagation();
+                       const dayName = new Date(date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+                       const text = `🎾 *PADEL CONFERMATO!* \n📅 Data: *${dayName}* \n👥 Giocatori: ${confirmedPlayers.map(p => p.name).join(', ')}\n\n_Chi apre la prenotazione?_`;
+                       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                       window.open(url, '_blank');
+                   };
+
                    return (
-                   <div key={date} className="bg-lime-900/10 border border-lime-500/30 p-3 rounded-xl flex items-center justify-between">
+                   <div key={date} className="bg-lime-900/10 border border-lime-500/30 p-3 rounded-xl flex items-center justify-between group">
                        <div className="flex flex-col">
                            <span className="text-white font-bold text-sm">{new Date(date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
-                           <span className="text-[10px] text-lime-400 uppercase font-black tracking-wider">Si Gioca!</span>
+                           <button 
+                               onClick={shareOnWhatsApp}
+                               className="flex items-center gap-1.5 text-[10px] text-green-400 font-black uppercase tracking-wider mt-1.5 hover:text-green-300 transition-colors"
+                           >
+                               <MessageCircle size={12} /> Invia su WhatsApp
+                           </button>
                        </div>
                        <div className="flex -space-x-2">
                            {confirmedPlayers.map((p, i) => (
-                               <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-900 z-10">
+                               <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-900 z-10 shadow-lg">
                                    <PlayerAvatar player={p} size="sm" className="w-full h-full" />
                                </div>
                            ))}

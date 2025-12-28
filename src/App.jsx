@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  signInAnonymously, 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   onAuthStateChanged,
+  signOut,
   signInWithCustomToken
 } from 'firebase/auth';
 import { 
@@ -46,10 +48,12 @@ import {
   Lock, 
   Unlock, 
   LogIn,
+  LogOut, // Nuova icona
   Zap,
   AlertCircle,
   CheckCircle2,
-  MessageCircle // Aggiunta icona WA
+  MessageCircle,
+  Mail // Nuova icona
 } from 'lucide-react';
 
 // --- IMPORTANTE: ASSICURATI CHE IL FILE SI CHIAMI logo.png ---
@@ -239,6 +243,100 @@ const PlayerAvatar = ({ player, size = "md", className="" }) => {
   );
 };
 
+// --- COMPONENTE AUTH LOGIN/REGISTER (NUOVO) ---
+const AuthScreen = ({ onLoginSuccess }) => {
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err) {
+      console.error(err);
+      let msg = "Errore di autenticazione.";
+      if (err.code === 'auth/wrong-password') msg = "Password errata.";
+      if (err.code === 'auth/user-not-found') msg = "Utente non trovato.";
+      if (err.code === 'auth/email-already-in-use') msg = "Email già in uso.";
+      if (err.code === 'auth/weak-password') msg = "Password troppo debole (min 6 caratteri).";
+      if (err.code === 'auth/invalid-email') msg = "Formato email non valido.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+       <div className="mb-8 flex flex-col items-center gap-4">
+          <div className="w-24 h-24">
+             <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-3xl font-black italic text-white tracking-tighter">PADEL CHALLENGE <span className="text-lime-400">2026</span></h1>
+            <p className="text-slate-500 text-sm mt-2 uppercase tracking-widest font-bold">Area Riservata</p>
+          </div>
+       </div>
+
+       <Card className="w-full max-w-sm border-lime-400/20 shadow-2xl shadow-lime-900/10">
+          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            {isRegistering ? <PlusCircle className="text-lime-400"/> : <LogIn className="text-lime-400"/>}
+            {isRegistering ? 'Crea Account' : 'Accedi'}
+          </h2>
+          
+          <form onSubmit={handleAuth}>
+            <Input 
+              label="Email" 
+              type="email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              placeholder="nome@esempio.com" 
+            />
+            <Input 
+              label="Password" 
+              type="password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              placeholder="******" 
+            />
+            
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
+                <AlertCircle size={16} /> {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Attendere...' : (isRegistering ? 'Registrati' : 'Entra')}
+            </Button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-700 text-center">
+            <p className="text-slate-400 text-xs">
+              {isRegistering ? "Hai già un account?" : "Non hai un account?"}
+            </p>
+            <button 
+              onClick={() => { setIsRegistering(!isRegistering); setError(''); }} 
+              className="text-lime-400 font-bold text-sm mt-1 hover:underline"
+            >
+              {isRegistering ? "Accedi ora" : "Creane uno nuovo"}
+            </button>
+          </div>
+       </Card>
+    </div>
+  );
+};
+
+
 // --- COMPONENTE GRAFICO SVG ---
 const ProgressChart = ({ players, matches }) => {
   const sortedMatches = matches
@@ -347,10 +445,7 @@ export default function App() {
     team1p1: '', team1p2: '', team2p1: '', team2p2: '', score: '', date: new Date().toISOString().split('T')[0]
   });
   const [profileName, setProfileName] = useState('');
-  const [profilePassword, setProfilePassword] = useState(''); 
-  const [loginPassword, setLoginPassword] = useState(''); 
-  const [loginTargetId, setLoginTargetId] = useState(null); 
-
+  
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerPhoto, setNewPlayerPhoto] = useState(null);
   
@@ -366,20 +461,11 @@ export default function App() {
       setIsConfigured(false);
       return;
     }
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Errore auth:", err);
-      }
-    };
-    initAuth();
+    // CONTROLLO AUTH STATE
     if (auth) {
-      const unsubscribe = onAuthStateChanged(auth, setUser);
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+      });
       return () => unsubscribe();
     }
   }, []);
@@ -389,6 +475,8 @@ export default function App() {
     const unsubPlayers = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'players'), (s) => {
       const d = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPlayers(d);
+      
+      // Auto-selezione se esiste un saved ID nel localStorage
       const savedId = localStorage.getItem('padel_player_id');
       if (savedId) {
         const found = d.find(p => p.id === savedId);
@@ -413,6 +501,13 @@ export default function App() {
 
   // --- BUSINESS LOGIC ---
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    setCurrentPlayer(null);
+    localStorage.removeItem('padel_player_id');
+    setShowSplash(true);
+  };
+
   const handlePhotoSelect = async (e, setPhotoState) => {
     if (e.target.files && e.target.files[0]) {
       const compressed = await compressImage(e.target.files[0]);
@@ -422,48 +517,27 @@ export default function App() {
 
   const handleCreateProfile = async () => {
     if (!profileName.trim()) return;
-    if (!profilePassword.trim()) {
-      alert("Devi scegliere una password per il tuo profilo!");
-      return;
-    }
     try {
       const docRef = await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'players'), {
         name: profileName,
-        password: profilePassword, 
         photoUrl: newPlayerPhoto,
+        ownerId: user.uid, // Associa il profilo a questo utente Auth
         createdAt: serverTimestamp(),
         createdBy: user.uid
       });
-      const newPlayer = { id: docRef.id, name: profileName, photoUrl: newPlayerPhoto, password: profilePassword };
+      const newPlayer = { id: docRef.id, name: profileName, photoUrl: newPlayerPhoto, ownerId: user.uid };
       setCurrentPlayer(newPlayer);
       localStorage.setItem('padel_player_id', docRef.id);
       setProfileName('');
-      setProfilePassword('');
       setNewPlayerPhoto(null);
       setIsEditingProfile(false);
     } catch (e) { console.error(e); }
   };
 
   const handleLoginClick = (player) => {
-    if (!player.password) {
-      setCurrentPlayer(player);
-      localStorage.setItem('padel_player_id', player.id);
-    } else {
-      setLoginTargetId(player.id);
-      setLoginPassword('');
-    }
-  };
-
-  const performLogin = () => {
-    const target = players.find(p => p.id === loginTargetId);
-    if (target && target.password === loginPassword) {
-      setCurrentPlayer(target);
-      localStorage.setItem('padel_player_id', target.id);
-      setLoginTargetId(null);
-      setLoginPassword('');
-    } else {
-      alert("Password errata!");
-    }
+    // Non chiediamo più la password locale, l'utente è già autenticato con Firebase
+    setCurrentPlayer(player);
+    localStorage.setItem('padel_player_id', player.id);
   };
 
   const handleAddPlayerGeneric = async () => {
@@ -487,7 +561,6 @@ export default function App() {
     try {
       const updateData = { name: playerToEdit.name };
       if (playerToEdit.newPhoto) updateData.photoUrl = playerToEdit.newPhoto;
-      if (playerToEdit.password) updateData.password = playerToEdit.password;
       await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'players', playerToEdit.id), updateData);
       setPlayerToEdit(null);
     } catch (err) { console.error(err); }
@@ -647,7 +720,6 @@ export default function App() {
           }); 
       }
       else { 
-          // I pareggi non esistono nei tie-break
           team1.forEach(pid => { if(stats[pid]) stats[pid].draws++; }); 
           team2.forEach(pid => { if(stats[pid]) stats[pid].draws++; }); 
       }
@@ -684,7 +756,6 @@ export default function App() {
     return date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
   }, [calendarView]);
 
-  // CALCOLO PIGRONI
   const missingPlayers = useMemo(() => {
       const activeDates = calendarDates;
       const availablePlayerIds = new Set();
@@ -696,7 +767,6 @@ export default function App() {
       return players.filter(p => !availablePlayerIds.has(p.id));
   }, [players, availabilities, calendarDates]);
 
-  // CALCOLO MATCH CONFERMATI (SUMMARY)
   const upcomingMatches = useMemo(() => {
       return calendarDates.filter(date => {
           const count = availabilities.filter(a => a.date === date).length;
@@ -728,46 +798,40 @@ export default function App() {
     );
   }
 
-  // 2. ERRORI
+  // 2. ERRORI CONFIG
   if (!isConfigured) return <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center"><div className="w-20 h-20 bg-yellow-400/20 rounded-full flex items-center justify-center text-yellow-400 mb-6 animate-pulse"><Database size={40} /></div><h1 className="text-3xl font-black mb-2">Database Non Collegato</h1></div>;
-  if (!user) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Caricamento...</div>;
+  
+  // 3. SE UTENTE NON LOGGATO -> MOSTRA FORM AUTH (EMAIL/PASSWORD)
+  if (!user) {
+    return <AuthScreen />;
+  }
 
-  // 3. SELEZIONE PROFILO (LOGIN)
+  // 4. SELEZIONE PROFILO (DOPO LOGIN FIREBASE)
   if (!currentPlayer && !isEditingProfile) {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center relative">
-        {loginTargetId && (
-          <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <Card className="w-full max-w-xs border-lime-400/50 shadow-2xl shadow-lime-900/20">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-lime-400 flex items-center justify-center mb-2">
-                  <PlayerAvatar player={players.find(p=>p.id===loginTargetId)} size="lg" className="w-full h-full border-none" />
-                </div>
-                <h3 className="text-lg font-bold">Ciao, {players.find(p=>p.id===loginTargetId)?.name}!</h3>
-                <Input type="password" label="Inserisci la tua Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="****" />
-                <div className="flex gap-2 w-full">
-                  <Button onClick={() => setLoginTargetId(null)} variant="secondary" className="flex-1">Annulla</Button>
-                  <Button onClick={performLogin} className="flex-1">Entra</Button>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
         <div className="w-full max-w-md space-y-8 text-center">
           <div><div className="mx-auto w-24 h-24 mb-4 drop-shadow-xl"><img src={logo} alt="Logo" className="w-full h-full object-contain" /></div><h1 className="text-4xl font-black italic tracking-tighter">PADEL CHALLENGE <span className="text-lime-400">2026</span></h1></div>
           <Card>
-            <h2 className="text-xl font-bold mb-4 flex items-center justify-center gap-2"><LogIn size={20} className="text-lime-400" /> Scegli il tuo profilo</h2>
+            <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-bold flex items-center gap-2"><LogIn size={20} className="text-lime-400" /> Chi sei?</h2>
+               <div className="text-xs text-slate-500">{user.email}</div>
+            </div>
+            
             <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2">
               {players.map(p => (
                 <button key={p.id} onClick={() => handleLoginClick(p)} className="bg-slate-700 hover:bg-slate-600 p-3 rounded-xl flex items-center justify-between gap-3 transition-all text-left border border-slate-600 hover:border-lime-400 group">
                   <div className="flex items-center gap-3"><PlayerAvatar player={p} size="sm" /><span className="font-bold">{p.name}</span></div>
-                  {p.password ? <Lock size={14} className="text-lime-400 opacity-50 group-hover:opacity-100" /> : <Unlock size={14} className="text-slate-500 opacity-30" />}
+                  <ArrowRight size={14} className="text-slate-500 group-hover:text-lime-400" />
                 </button>
               ))} 
             </div>
-            <div className="border-t border-slate-700 mt-4 pt-4">
+            <div className="border-t border-slate-700 mt-4 pt-4 space-y-3">
               <button onClick={() => setIsEditingProfile(true)} className="w-full py-3 bg-slate-800 border border-slate-600 border-dashed rounded-xl text-slate-400 font-bold hover:text-white hover:border-white transition-all flex items-center justify-center gap-2">
                 <PlusCircle size={18} /> Crea Nuovo Giocatore
+              </button>
+              <button onClick={handleLogout} className="w-full py-2 text-red-400 text-xs uppercase font-bold hover:text-red-300">
+                Disconnetti Account
               </button>
             </div>
           </Card>
@@ -776,7 +840,7 @@ export default function App() {
     );
   }
 
-  // 4. CREAZIONE NUOVO PROFILO
+  // 5. CREAZIONE NUOVO PROFILO
   if (isEditingProfile) {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-center items-center">
@@ -784,7 +848,6 @@ export default function App() {
           <h2 className="text-2xl font-bold mb-4">Nuovo Giocatore</h2>
           <div className="flex flex-col items-center gap-4 mb-4"><div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 overflow-hidden relative group cursor-pointer" onClick={() => profilePhotoInputRef.current.click()}>{newPlayerPhoto ? (<img src={newPlayerPhoto} alt="Preview" className="w-full h-full object-cover" />) : (<Camera size={20} className="text-slate-500 group-hover:text-lime-400" />)}</div><input type="file" ref={profilePhotoInputRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoSelect(e, setNewPlayerPhoto)} /></div>
           <Input label="Nome" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Es. Il Cannibale" />
-          <Input label="Password (per entrare)" type="password" value={profilePassword} onChange={(e) => setProfilePassword(e.target.value)} placeholder="Scegli una password..." />
           <div className="flex gap-3"><Button onClick={() => setIsEditingProfile(false)} variant="secondary" className="flex-1">Annulla</Button><Button onClick={handleCreateProfile} className="flex-1">Crea Profilo</Button></div>
         </Card>
       </div>
@@ -839,8 +902,16 @@ export default function App() {
       )}
 
       <header className="fixed top-0 left-0 right-0 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 z-50 px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2"><div className="w-6 h-6"><img src={logo} alt="Mini Logo" className="w-full h-full object-contain" /></div><span className="font-black italic text-xl tracking-tight">PADEL CHALLENGE <span className="text-lime-400">2026</span></span></div>
-        <div className="flex items-center gap-2"><div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full border border-slate-700"><PlayerAvatar player={currentPlayer} size="sm" /><span className="text-xs font-bold text-slate-300 pr-1">{currentPlayer?.name || 'Utente'}</span></div><button onClick={() => { localStorage.removeItem('padel_player_id'); setCurrentPlayer(null); }} className="text-slate-500 hover:text-white"><XCircle size={20} /></button></div>
+        <div className="flex items-center gap-2"><div className="w-6 h-6"><img src={logo} alt="Mini Logo" className="w-full h-full object-contain" /></div><span className="font-black italic text-xl tracking-tight">PADEL <span className="text-lime-400">2026</span></span></div>
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full border border-slate-700">
+                <PlayerAvatar player={currentPlayer} size="sm" />
+                <span className="text-xs font-bold text-slate-300 pr-1 hidden sm:inline">{currentPlayer?.name}</span>
+            </div>
+            <button onClick={handleLogout} className="p-2 bg-slate-800 rounded-full border border-slate-700 text-slate-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 transition-colors">
+                <LogOut size={16} />
+            </button>
+        </div>
       </header>
 
       <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
@@ -906,7 +977,6 @@ export default function App() {
                         </div>
                     </div>
                     
-                    {/* STATISTICHE AGGIORNATE A DUE RIGHE */}
                     <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-700">
                         <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Vinte</div><div className="text-sm font-bold text-white">{p.wins}</div></div>
                         <div className="bg-slate-900/50 rounded-lg p-2 text-center"><div className="text-[10px] text-slate-500 uppercase font-bold">Pari</div><div className="text-sm font-bold text-slate-300">{p.draws}</div></div>
